@@ -35,7 +35,7 @@ function EditableText({ value, onChange, multiline = false, tag = 'span', classN
   };
 
   if (!editable) {
-    return <Tag className={className} style={style}>{value || placeholder}</Tag>;
+    return <Tag className={className} style={style}>{value || ''}</Tag>;
   }
 
   return (

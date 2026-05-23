@@ -89,20 +89,39 @@ function DraggablePolaroid({ photo, onCommit, onPatch, onDelete, zIndex = 2 }) {
 
 // Shared page header — keeps the rhythm across sections.
 function SBPageHeader({ no, en, kr, subEn, subKr, accent = '#d44a35' }) {
+  const store = window.useStore?.();
+  const canEdit = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const header = store?.content?.pageHeaders?.[no] || { en, kr, subEn, subKr };
+  const updateHeader = (field, value) => store?.update?.(`pageHeaders.${no}.${field}`, value);
+
   return (
     <div style={{ position: 'absolute', top: 36, left: 80, right: 80, zIndex: 4,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="sb-mono" style={{ fontSize: 11, color: '#7a6648', letterSpacing: '.22em', whiteSpace: 'nowrap' }}>
-          {no} · {en.toUpperCase()} · {kr}
+          {no} · <SBEditableText tag="span" value={header.en} onChange={(v) => updateHeader('en', v)} /> · <SBEditableText tag="span" value={header.kr} onChange={(v) => updateHeader('kr', v)} />
         </div>
         <h2 className="sb-hand" style={{ fontSize: 56, margin: '2px 0 0', lineHeight: .9, color: '#1c1612' }}>
-          {en} <span style={{ color: accent }}>↓</span>
+          <SBEditableText tag="span" value={header.en} onChange={(v) => updateHeader('en', v)} /> <span style={{ color: accent }}>↓</span>
         </h2>
-        {(subKr || subEn) && (
+        {(header.subKr || header.subEn || canEdit) && (
           <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            {subKr && <span className="sb-hand-kr" style={{ fontSize: 18, color: '#213e6c' }}>{subKr}</span>}
-            {subEn && <span className="sb-hand" style={{ fontSize: 18, color: '#1c1612' }}>· {subEn}</span>}
+            <SBEditableText
+              tag="span"
+              className="sb-hand-kr"
+              value={header.subKr}
+              onChange={(v) => updateHeader('subKr', v)}
+              placeholder="한글 설명"
+              style={{ fontSize: 18, color: '#213e6c' }}
+            />
+            <span className="sb-hand" style={{ fontSize: 18, color: '#1c1612' }}>
+              · <SBEditableText
+                tag="span"
+                value={header.subEn}
+                onChange={(v) => updateHeader('subEn', v)}
+                placeholder="subtitle"
+              />
+            </span>
           </div>
         )}
       </div>
@@ -178,19 +197,23 @@ function DraggablePhotos() {
 // 04 · MELBOURNE MAP
 // ═══════════════════════════════════════════════════════════════
 function ScrapbookMap() {
-  const pins = [
-    { n: '01', name: 'Lune',           kr: '룬',         place: 'Fitzroy',       x: 56, y: 32 },
-    { n: '02', name: 'Pellegrini\u2019s', kr: '펠레그리니', place: 'Bourke St',     x: 47, y: 50 },
-    { n: '03', name: 'Queen Vic',      kr: '퀸빅',       place: 'CBD',           x: 38, y: 44 },
-    { n: '04', name: 'Carlton',        kr: '칼튼',       place: 'Carlton',       x: 55, y: 36 },
-    { n: '05', name: 'NGV',            kr: '미술관',     place: 'Southbank',     x: 45, y: 62 },
-    { n: '06', name: 'Mukja',          kr: '먹자',       place: 'CBD · 한식',    x: 50, y: 52 },
-    { n: '07', name: 'Box Hill',       kr: '빙수집',     place: 'Box Hill',      x: 85, y: 56 },
-    { n: '08', name: 'Glen Waverley',  kr: 'K-BBQ',     place: 'Glen Waverley', x: 82, y: 66 },
-    { n: '09', name: 'St Kilda',       kr: '세인트킬다', place: 'St Kilda',      x: 30, y: 88 },
-    { n: '10', name: 'Brighton',       kr: '비치박스',   place: 'Brighton',      x: 26, y: 95 },
-    { n: '11', name: 'Share house',    kr: '우리집',     place: 'Brunswick',     x: 62, y: 22 },
-  ];
+  const store = window.useStore?.();
+  const pins = store?.content?.mapPins || window.DIARY_DEFAULTS?.mapPins || [];
+  const mapNote = store?.content?.mapNote || window.DIARY_DEFAULTS?.mapNote || '';
+  const patch = (id, p) => store?.updateItem?.('mapPins', id, p);
+  const remove = (id) => store?.removeItem?.('mapPins', id);
+  const add = () => {
+    const n = String(pins.length + 1).padStart(2, '0');
+    store?.addItem?.('mapPins', {
+      id: 'm' + Date.now(),
+      n,
+      name: 'New place',
+      kr: '',
+      place: 'Melbourne',
+      x: 48 + Math.random() * 12,
+      y: 40 + Math.random() * 18,
+    });
+  };
   const [hovered, setHovered] = React.useState(null);
 
   return (
@@ -247,7 +270,7 @@ function ScrapbookMap() {
 
         {/* pins */}
         {pins.map(p => (
-          <div key={p.n} className="map-pin"
+          <div key={p.id || p.n} className="map-pin"
             onMouseEnter={() => setHovered(p.n)}
             onMouseLeave={() => setHovered(null)}
             style={{ left: `${p.x}%`, top: `${p.y}%`, zIndex: hovered === p.n ? 10 : 4 }}>
@@ -261,6 +284,7 @@ function ScrapbookMap() {
               }}>
                 <div className="sb-hand" style={{ fontSize: 16, color: '#1c1612', lineHeight: 1 }}>{p.name}</div>
                 <div className="sb-hand-kr" style={{ fontSize: 12, color: '#213e6c' }}>{p.kr}</div>
+                <div className="sb-mono" style={{ fontSize: 9, color: '#7a6648', marginTop: 2 }}>{p.place}</div>
               </div>
             )}
           </div>
@@ -277,26 +301,62 @@ function ScrapbookMap() {
         </h3>
         <ol style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: 480, overflow: 'hidden' }}>
           {pins.map(p => (
-            <li key={p.n}
+            <li key={p.id || p.n}
               onMouseEnter={() => setHovered(p.n)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                display: 'grid', gridTemplateColumns: '24px 1fr auto', alignItems: 'baseline', gap: 8,
+                display: 'grid', gridTemplateColumns: '28px 1fr auto 24px', alignItems: 'baseline', gap: 8,
                 padding: '5px 4px', borderBottom: '0.5px dotted rgba(0,0,0,.25)',
                 background: hovered === p.n ? 'rgba(212,74,53,.08)' : 'transparent',
                 cursor: 'pointer'
               }}>
-              <span className="sb-mono" style={{ fontSize: 11, color: '#d44a35' }}>{p.n}</span>
-              <span className="sb-hand" style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
-              <span className="sb-hand-kr" style={{ fontSize: 13, color: '#213e6c', whiteSpace: 'nowrap' }}>{p.kr}</span>
+              <span className="sb-mono" style={{ fontSize: 11, color: '#d44a35' }}>
+                <SBEditableText tag="span" value={p.n} onChange={(v) => patch(p.id, { n: v })} />
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <SBEditableText
+                  tag="div"
+                  className="sb-hand"
+                  value={p.name}
+                  onChange={(v) => patch(p.id, { name: v })}
+                  style={{ fontSize: 20, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                />
+                <SBEditableText
+                  tag="div"
+                  className="sb-mono"
+                  value={p.place}
+                  onChange={(v) => patch(p.id, { place: v })}
+                  style={{ fontSize: 8, color: '#7a6648', letterSpacing: '.12em', marginTop: -2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                />
+              </span>
+              <SBEditableText
+                tag="span"
+                className="sb-hand-kr"
+                value={p.kr}
+                onChange={(v) => patch(p.id, { kr: v })}
+                placeholder="한글"
+                style={{ fontSize: 13, color: '#213e6c', whiteSpace: 'nowrap' }}
+              />
+              {window.DeleteButton && p.id && (
+                <window.DeleteButton onClick={() => remove(p.id)} style={{ width: 18, height: 18, fontSize: 10 }} />
+              )}
             </li>
           ))}
         </ol>
 
         <SBPostit top={null} left={null} rotate={3} width={200} bg="#fef4a8"
           style={{ position: 'absolute', bottom: 0, right: 0 }}>
-          “next time:<br/>brighton at dawn,<br/>before the boxes glow”
+          <SBEditableText
+            tag="div"
+            value={mapNote}
+            onChange={(v) => store?.update?.('mapNote', v)}
+            multiline
+            style={{ whiteSpace: 'pre-line' }}
+          />
         </SBPostit>
+        <div style={{ position: 'absolute', bottom: 0, left: 0 }}>
+          {window.AddButton && <window.AddButton onClick={add} label="+ ADD PLACE" />}
+        </div>
       </div>
     </div>
   );
@@ -309,13 +369,23 @@ window.ScrapbookMap = ScrapbookMap;
 // 05 · TIMELINE — Feb → Jun
 // ═══════════════════════════════════════════════════════════════
 function ScrapbookTimeline() {
-  const months = [
-    { en: 'Feb', kr: '2월', big: 'we meet',     note: '교포 lands at TUL · jeongmin\u2019s already crashing my couch', pol: 'first dinner · 14 feb',  bg: '#fdf3df', accent: '#d44a35', tape: 'red' },
-    { en: 'Mar', kr: '3월', big: 'autumn',     note: 'lygon st gelato season ends · we eat it anyway',              pol: 'lygon st · 03 mar',     bg: '#f6e9d3', accent: '#213e6c', tape: 'blue' },
-    { en: 'Apr', kr: '4월', big: 'cold snap',  note: 'first puffer jackets · 김치 weekend · ngv all afternoon',    pol: 'share house · 17 apr',  bg: '#f9ecd1', accent: '#6b7a4a', tape: 'yellow' },
-    { en: 'May', kr: '5월', big: 'routines',   note: 'patricia every wednesday · jeongmin learns to make a flat white',  pol: 'patricia · 08 may', bg: '#fae6cf', accent: '#d39836', tape: 'red' },
-    { en: 'Jun', kr: '6월', big: 'last weeks', note: 'box hill bingsu run · final trams · letters left on the fridge',  pol: 'st kilda · 21 jun', bg: '#f3e0c1', accent: '#213e6c', tape: 'dots' },
-  ];
+  const store = window.useStore?.();
+  const months = store?.content?.timelineMonths || window.DIARY_DEFAULTS?.timelineMonths || [];
+  const stamps = store?.content?.timelineStamps || window.DIARY_DEFAULTS?.timelineStamps || {};
+  const note = store?.content?.timelineNote || window.DIARY_DEFAULTS?.timelineNote || '';
+  const patch = (id, p) => store?.updateItem?.('timelineMonths', id, p);
+  const add = () => store?.addItem?.('timelineMonths', {
+    id: 't' + Date.now(),
+    en: 'Month',
+    kr: '',
+    big: 'new memory',
+    note: 'what happened',
+    pol: 'photo slot',
+    bg: '#fdf3df',
+    accent: '#d44a35',
+    tape: 'red',
+    imageUrl: null,
+  });
 
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
@@ -330,8 +400,8 @@ function ScrapbookTimeline() {
       <div style={{ position: 'absolute', top: 200, left: 80, right: 80, display: 'flex',
                     gap: 18, justifyContent: 'space-between' }}>
         {months.map((m, i) => (
-          <div key={m.en} className="lift" style={{
-            width: 'calc((100% - 72px) / 5)',
+          <div key={m.id || m.en} className="lift" style={{
+            width: `calc((100% - ${(Math.max(months.length - 1, 0)) * 18}px) / ${Math.max(months.length, 1)})`,
             background: m.bg,
             padding: '18px 16px',
             boxShadow: '0 8px 16px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.06)',
@@ -343,16 +413,44 @@ function ScrapbookTimeline() {
               style={{ position: 'absolute', top: -10, left: '50%', width: 60, marginLeft: -30, height: 14,
                        transform: `rotate(${[-3, 4, -2, 5, -3][i]}deg)` }} />
             <div className="sb-mono" style={{ fontSize: 10, color: m.accent, letterSpacing: '.22em' }}>
-              {m.en.toUpperCase()} · 2026
+              <SBEditableText tag="span" value={m.en} onChange={(v) => patch(m.id, { en: v })} /> · 2026
             </div>
-            <div className="sb-hand-kr" style={{ fontSize: 30, color: m.accent, lineHeight: 1 }}>{m.kr}</div>
-            <div className="sb-hand" style={{ fontSize: 28, color: '#1c1612', lineHeight: 1, marginTop: 6 }}>
-              {m.big}
-            </div>
-            <div className="photo-slot" data-slot={m.pol} style={{ aspectRatio: '1/1', marginTop: 12 }} />
-            <div className="sb-hand" style={{ fontSize: 14, color: '#3a2e1c', marginTop: 10, lineHeight: 1.2 }}>
-              {m.note}
-            </div>
+            <SBEditableText
+              tag="div"
+              className="sb-hand-kr"
+              value={m.kr}
+              onChange={(v) => patch(m.id, { kr: v })}
+              placeholder="한글"
+              style={{ fontSize: 30, color: m.accent, lineHeight: 1 }}
+            />
+            <SBEditableText
+              tag="div"
+              className="sb-hand"
+              value={m.big}
+              onChange={(v) => patch(m.id, { big: v })}
+              style={{ fontSize: 28, color: '#1c1612', lineHeight: 1, marginTop: 6 }}
+            />
+            <SBEditableImage
+              src={m.imageUrl}
+              slot={m.pol}
+              onChange={(url) => patch(m.id, { imageUrl: url })}
+              style={{ aspectRatio: '1/1', marginTop: 12 }}
+            />
+            <SBEditableText
+              tag="div"
+              className="sb-mono"
+              value={m.pol}
+              onChange={(v) => patch(m.id, { pol: v })}
+              style={{ fontSize: 8, color: '#7a6648', marginTop: 4, letterSpacing: '.1em' }}
+            />
+            <SBEditableText
+              tag="div"
+              className="sb-hand"
+              value={m.note}
+              onChange={(v) => patch(m.id, { note: v })}
+              multiline
+              style={{ fontSize: 14, color: '#3a2e1c', marginTop: 8, lineHeight: 1.2 }}
+            />
           </div>
         ))}
       </div>
@@ -362,18 +460,30 @@ function ScrapbookTimeline() {
         <div className="sb-mono" style={{
           padding: '6px 10px', border: '1.5px dashed #1c1612',
           fontSize: 10, letterSpacing: '.18em', background: 'rgba(255,255,255,.4)'
-        }}>ARRIVED · 14 FEB</div>
+        }}>
+          <SBEditableText tag="span" value={stamps.arrived} onChange={(v) => store?.update?.('timelineStamps.arrived', v)} />
+        </div>
         <div style={{ flex: 1, height: 0, borderTop: '1px dashed rgba(0,0,0,.4)', width: 160 }} />
         <div className="sb-mono" style={{
           padding: '6px 10px', border: '1.5px dashed #d44a35', color: '#d44a35',
           fontSize: 10, letterSpacing: '.18em', background: 'rgba(255,255,255,.4)'
-        }}>DEPARTING · 28 JUN</div>
+        }}>
+          <SBEditableText tag="span" value={stamps.departing} onChange={(v) => store?.update?.('timelineStamps.departing', v)} />
+        </div>
       </div>
 
       <SBPostit bottom={36} right={80} rotate={4} width={190} bg="#fbd9c9">
-        “152 days. not enough.”<br/>
-        <span style={{ fontSize: 14, color: '#7a4a2a' }}>— 정민, on the tram home</span>
+        <SBEditableText
+          tag="div"
+          value={note}
+          onChange={(v) => store?.update?.('timelineNote', v)}
+          multiline
+          style={{ whiteSpace: 'pre-line' }}
+        />
       </SBPostit>
+      <div style={{ position: 'absolute', bottom: 36, right: 300 }}>
+        {window.AddButton && <window.AddButton onClick={add} label="+ ADD MONTH" />}
+      </div>
     </div>
   );
 }
@@ -382,22 +492,18 @@ function ScrapbookTimeline() {
 // 06 · PLAYLIST
 // ═══════════════════════════════════════════════════════════════
 function ScrapbookPlaylist() {
-  const tracks = [
-    { n: '01', t: '밤편지',                      a: 'IU',                      who: 'JM', note: 'sleeping pill, but nice' },
-    { n: '02', t: 'The Less I Know the Better', a: 'Tame Impala',             who: 'W',  note: 'lygon walk anthem' },
-    { n: '03', t: '어떻게 이별까지 사랑하겠어',  a: 'AKMU',                    who: 'GB', note: '규보 cried (a bit)' },
-    { n: '04', t: 'Never Be Like You',          a: 'Flume',                   who: 'W',  note: 'sunday morning' },
-    { n: '05', t: 'Tomboy',                     a: 'Hyukoh',                  who: 'JM', note: 'tram window song' },
-    { n: '06', t: 'Cherry-coloured Funk',       a: 'Cocteau Twins',           who: 'GB', note: 'rothko room loop' },
-    { n: '07', t: '봄날',                        a: 'BTS',                     who: 'JM', note: 'unironic. fight me.' },
-    { n: '08', t: 'Eleanor Put Your Boots On',  a: 'Franz Ferdinand',         who: 'W',  note: 'st kilda pier' },
-    { n: '09', t: 'Beautiful',                  a: 'Crush',                   who: 'GB', note: 'kitchen cooking song' },
-    { n: '10', t: 'Sometimes',                  a: 'James',                   who: 'W',  note: 'cold brunswick' },
-    { n: '11', t: '나의 사춘기에게',            a: 'Bolbbalgan4',             who: 'JM', note: 'walk-home-late song' },
-    { n: '12', t: 'Innerbloom',                 a: 'RÜFÜS DU SOL',           who: 'W',  note: 'last side B track' },
-  ];
+  const store = window.useStore?.();
+  const tracks = store?.content?.playlist || window.DIARY_DEFAULTS?.playlist || [];
+  const cover = store?.content?.playlistCover || window.DIARY_DEFAULTS?.playlistCover || {};
+  const patch = (id, p) => store?.updateItem?.('playlist', id, p);
+  const remove = (id) => store?.removeItem?.('playlist', id);
+  const add = () => {
+    const n = String(tracks.length + 1).padStart(2, '0');
+    store?.addItem?.('playlist', { id: 's' + Date.now(), n, t: 'new song', a: 'artist', who: 'W', note: 'memory' });
+  };
   const [playing, setPlaying] = React.useState(false);
   const [now, setNow] = React.useState(0);
+  const nowTrack = tracks[now] || tracks[0] || {};
 
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
@@ -413,18 +519,23 @@ function ScrapbookPlaylist() {
       }}>
         <div className="sb-mono" style={{ fontSize: 10, letterSpacing: '.22em', opacity: .7 }}>SIDE A · OUR MIXTAPE 2026</div>
         <div className="sb-hand" style={{ fontSize: 48, lineHeight: 1, marginTop: 4 }}>
-          melbourne <span style={{ color: '#d44a35' }}>♥</span>
+          <SBEditableText tag="span" value={cover.title} onChange={(v) => store?.update?.('playlistCover.title', v)} />
+          <span style={{ color: '#d44a35' }}> ♥</span>
         </div>
-        <div className="sb-hand-kr" style={{ fontSize: 26, color: '#fbd9c9', lineHeight: 1, marginTop: 2 }}>
-          우리 셋의 32곡
-        </div>
+        <SBEditableText
+          tag="div"
+          className="sb-hand-kr"
+          value={cover.subtitle}
+          onChange={(v) => store?.update?.('playlistCover.subtitle', v)}
+          style={{ fontSize: 26, color: '#fbd9c9', lineHeight: 1, marginTop: 2 }}
+        />
 
         {/* Reels */}
         <div style={{ display: 'flex', gap: 50, marginTop: 26, alignItems: 'center', justifyContent: 'center' }}>
           <div className={playing ? 'cassette-spool' : 'cassette-spool'}
             style={{ width: 64, height: 64, animation: playing ? 'spin 3s linear infinite' : 'none' }} />
           <div style={{ flex: 1, height: 6, background: '#d44a35', borderRadius: 3, position: 'relative' }}>
-            <div style={{ width: `${(now / tracks.length) * 100}%`, height: '100%', background: '#fbd9c9', borderRadius: 3, transition: 'width .3s' }} />
+            <div style={{ width: `${tracks.length ? (now / tracks.length) * 100 : 0}%`, height: '100%', background: '#fbd9c9', borderRadius: 3, transition: 'width .3s' }} />
           </div>
           <div className={playing ? 'cassette-spool' : 'cassette-spool'}
             style={{ width: 64, height: 64, animation: playing ? 'spin 3s linear infinite reverse' : 'none' }} />
@@ -437,15 +548,20 @@ function ScrapbookPlaylist() {
             cursor: 'pointer', borderRadius: 3
           }}>{playing ? '❚❚  PAUSE' : '▶  PLAY'}</button>
           <div className="sb-mono" style={{ fontSize: 10, opacity: .7 }}>
-            {tracks[now]?.t} — {tracks[now]?.a}
+            {nowTrack.t} — {nowTrack.a}
           </div>
         </div>
       </div>
 
       {/* Pen-marked liner notes underneath cassette */}
       <SBPostit top={490} left={140} rotate={-5} width={300} bg="#fef4a8">
-        “press play.<br/>then dance, even if you’re alone.”<br/>
-        <span style={{ fontSize: 14, color: '#7a4a2a' }}>— 규보, on the share house fridge</span>
+        <SBEditableText
+          tag="div"
+          value={cover.note}
+          onChange={(v) => store?.update?.('playlistCover.note', v)}
+          multiline
+          style={{ whiteSpace: 'pre-line' }}
+        />
       </SBPostit>
 
       {/* Track list */}
@@ -455,34 +571,62 @@ function ScrapbookPlaylist() {
                     transform: 'rotate(1deg)' }}>
         <div className="washi blue" style={{ position: 'absolute', top: -10, left: 30, width: 120, height: 16, transform: 'rotate(-2deg)' }} />
         <div className="washi dots" style={{ position: 'absolute', top: -10, right: 30, width: 90, height: 16, transform: 'rotate(3deg)' }} />
-        <div className="sb-mono" style={{ fontSize: 10, color: '#7a6648', letterSpacing: '.22em' }}>TRACKLIST · SIDE A · 12 / 32</div>
+        <div className="sb-mono" style={{ fontSize: 10, color: '#7a6648', letterSpacing: '.22em' }}>TRACKLIST · SIDE A · {tracks.length} / 32</div>
         <ol style={{ listStyle: 'none', padding: 0, margin: '10px 0 0' }}>
           {tracks.map((tr, i) => {
             const isNow = i === now;
             return (
-              <li key={tr.n}
+              <li key={tr.id || tr.n}
                 onClick={() => setNow(i)}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '28px 1fr 130px 36px 1fr',
+                  gridTemplateColumns: '28px 1fr 130px 42px 1fr 24px',
                   alignItems: 'baseline', gap: 10,
                   padding: '5px 6px',
                   borderBottom: '0.5px dotted rgba(0,0,0,.2)',
                   background: isNow ? 'rgba(212,74,53,.1)' : 'transparent',
                   cursor: 'pointer'
                 }}>
-                <span className="sb-mono" style={{ fontSize: 11, color: isNow ? '#d44a35' : '#7a6648' }}>{tr.n}</span>
-                <span className="sb-hand" style={{ fontSize: 19, lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr.t}</span>
-                <span className="sb-mono" style={{ fontSize: 11, color: '#544a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr.a}</span>
+                <span className="sb-mono" style={{ fontSize: 11, color: isNow ? '#d44a35' : '#7a6648' }}>
+                  <SBEditableText tag="span" value={tr.n} onChange={(v) => patch(tr.id, { n: v })} />
+                </span>
+                <SBEditableText
+                  tag="span"
+                  className="sb-hand"
+                  value={tr.t}
+                  onChange={(v) => patch(tr.id, { t: v })}
+                  style={{ fontSize: 19, lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                />
+                <SBEditableText
+                  tag="span"
+                  className="sb-mono"
+                  value={tr.a}
+                  onChange={(v) => patch(tr.id, { a: v })}
+                  style={{ fontSize: 11, color: '#544a3a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                />
                 <span className="sb-sticker-circle" style={{
-                  width: 22, height: 22, fontSize: 10,
+                  width: 32, height: 22, fontSize: 10,
                   background: tr.who === 'JM' ? '#213e6c' : tr.who === 'GB' ? '#d44a35' : '#6b7a4a'
-                }}>{tr.who}</span>
-                <span className="sb-hand" style={{ fontSize: 15, color: '#7a4a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr.note}</span>
+                }}>
+                  <SBEditableText tag="span" value={tr.who} onChange={(v) => patch(tr.id, { who: v })} />
+                </span>
+                <SBEditableText
+                  tag="span"
+                  className="sb-hand"
+                  value={tr.note}
+                  onChange={(v) => patch(tr.id, { note: v })}
+                  style={{ fontSize: 15, color: '#7a4a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                />
+                {window.DeleteButton && tr.id && (
+                  <window.DeleteButton onClick={() => remove(tr.id)} style={{ width: 18, height: 18, fontSize: 10 }} />
+                )}
               </li>
             );
           })}
         </ol>
+        <div style={{ marginTop: 12 }}>
+          {window.AddButton && <window.AddButton onClick={add} label="+ ADD SONG" />}
+        </div>
       </div>
     </div>
   );

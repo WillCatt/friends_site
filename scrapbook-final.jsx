@@ -63,12 +63,19 @@ function ScrapbookJokes() {
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="sb-mono" style={{ fontSize: 10, letterSpacing: '.16em', color: '#7a4a2a' }}>
-              — {j.who?.toUpperCase()}
+              — <SBEditableText
+                tag="span"
+                value={j.who}
+                onChange={(v) => update(j.id, { who: v })}
+              />
             </div>
             {window.DeleteButton && j.id && (
               <window.DeleteButton onClick={() => remove(j.id)} />
             )}
           </div>
+          {window.ColorSwatch && (
+            <window.ColorSwatch value={j.bg} onChange={(bg) => update(j.id, { bg })} />
+          )}
         </div>
       ))}
 
@@ -98,38 +105,27 @@ function ScrapbookJokes() {
 // 08 · LETTERS — three handwritten notes
 // ═══════════════════════════════════════════════════════════════
 function ScrapbookLetters() {
-  const letters = [
-    {
-      from: '정민', en: 'Jeongmin', to: 'W & 규보', bg: '#fef4d4', rot: -2.5, accent: '#d44a35',
-      body: [
-        'I didn\u2019t think I\u2019d miss the smell of tram brakes, but I will.',
-        'Will — thanks for never finishing the kimchi without telling me.',
-        '규보야 — the cruffin queue was a mistake. and also my favourite morning.',
-        'I\u2019m taking the magpies home in my head.',
-      ],
-      sign: '정민', date: '23 jun · share house kitchen',
-    },
-    {
-      from: '규보', en: 'Hailey · Gyubo', to: 'JM & Will', bg: '#fbd9c9', rot: 1.5, accent: '#213e6c',
-      body: [
-        '이런 친구들 만난 거, 운이 좋다는 말로는 부족해.',
-        'Will, you cook pasta like an Italian grandfather and I will never recover.',
-        '정민아, 너랑 빙수 먹은 날들이 제일 좋았어.',
-        'Melbourne, 다음에 또 보자. 우리 셋 다 같이.',
-      ],
-      sign: '규보 · Hailey', date: '26 jun · the airport',
-    },
-    {
-      from: 'Will', en: 'William', to: 'JM & 규보', bg: '#dff0d6', rot: -1, accent: '#6b7a4a',
-      body: [
-        'Five months ago this share house was just a couch and a kettle.',
-        'Now there\u2019s gochujang on the top shelf where the salt used to be.',
-        'I don\u2019t think the kitchen will sound the same after Sunday.',
-        'Come back. Bring 라면. The tram is still on me.',
-      ],
-      sign: 'Will', date: '27 jun · brunswick',
-    },
-  ];
+  const store = window.useStore?.();
+  const letters = store?.content?.letters || window.DIARY_DEFAULTS?.letters || [];
+  const patch = (id, p) => store?.updateItem?.('letters', id, p);
+  const remove = (id) => store?.removeItem?.('letters', id);
+  const add = () => store?.addItem?.('letters', {
+    id: 'l' + Date.now(),
+    from: 'Name',
+    en: 'Name',
+    to: 'Friends',
+    bg: '#fef4d4',
+    rot: 0,
+    accent: '#d44a35',
+    body: ['Write a note here.'],
+    sign: 'Name',
+    date: 'date · place',
+  });
+  const patchBodyLine = (letter, index, value) => {
+    const body = [...(letter.body || [])];
+    body[index] = value;
+    patch(letter.id, { body });
+  };
 
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
@@ -138,7 +134,7 @@ function ScrapbookLetters() {
       <div style={{ position: 'absolute', top: 200, left: 80, right: 80, bottom: 60,
                     display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
         {letters.map((l, i) => (
-          <div key={l.en} className="lift" style={{
+          <div key={l.id || l.en} className="lift" style={{
             background: l.bg, padding: 22,
             transform: `rotate(${l.rot}deg)`,
             boxShadow: '0 12px 24px rgba(0,0,0,.16), 0 2px 4px rgba(0,0,0,.08)',
@@ -155,36 +151,63 @@ function ScrapbookLetters() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                 <div className="sb-mono" style={{ fontSize: 9, color: l.accent, letterSpacing: '.22em' }}>
-                  FROM · {l.en.toUpperCase()}
+                  FROM · <SBEditableText tag="span" value={l.en} onChange={(v) => patch(l.id, { en: v })} />
                 </div>
-                <div className="sb-hand-kr" style={{ fontSize: 38, color: l.accent, lineHeight: 1.25, marginTop: 2 }}>{l.from}</div>
+                <SBEditableText
+                  tag="div"
+                  className="sb-hand-kr"
+                  value={l.from}
+                  onChange={(v) => patch(l.id, { from: v })}
+                  style={{ fontSize: 38, color: l.accent, lineHeight: 1.25, marginTop: 2 }}
+                />
               </div>
               <div className="sb-mono" style={{ fontSize: 9, color: '#7a4a2a', letterSpacing: '.22em', textAlign: 'right', whiteSpace: 'nowrap', lineHeight: 1.6, paddingTop: 2 }}>
-                TO<br/>{l.to}
+                TO<br/>
+                <SBEditableText tag="span" value={l.to} onChange={(v) => patch(l.id, { to: v })} />
               </div>
             </div>
 
             <div style={{ marginTop: 22, flex: 1 }}>
-              {l.body.map((line, j) => (
-                <p key={j} className="sb-hand" style={{
-                  fontSize: 17, lineHeight: '34px',
-                  margin: 0, color: '#1c1612', textWrap: 'pretty'
-                }}>
-                  {line}
-                </p>
+              {(l.body || []).map((line, j) => (
+                <SBEditableText
+                  key={j}
+                  tag="p"
+                  className="sb-hand"
+                  value={line}
+                  onChange={(v) => patchBodyLine(l, j, v)}
+                  style={{
+                    fontSize: 17, lineHeight: '34px',
+                    margin: 0, color: '#1c1612', textWrap: 'pretty'
+                  }}
+                />
               ))}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12 }}>
-              <div className="sb-hand" style={{ fontSize: 28, color: l.accent, lineHeight: 1, fontStyle: 'italic' }}>
-                — {l.sign}
-              </div>
-              <div className="sb-mono" style={{ fontSize: 9, color: '#7a4a2a', letterSpacing: '.16em' }}>
-                {l.date}
-              </div>
+              <SBEditableText
+                tag="div"
+                className="sb-hand"
+                value={`— ${l.sign}`}
+                onChange={(v) => patch(l.id, { sign: v.replace(/^—\s*/, '') })}
+                style={{ fontSize: 28, color: l.accent, lineHeight: 1, fontStyle: 'italic' }}
+              />
+              <SBEditableText
+                tag="div"
+                className="sb-mono"
+                value={l.date}
+                onChange={(v) => patch(l.id, { date: v })}
+                style={{ fontSize: 9, color: '#7a4a2a', letterSpacing: '.16em' }}
+              />
             </div>
+            {window.DeleteButton && l.id && (
+              <window.DeleteButton onClick={() => remove(l.id)}
+                style={{ position: 'absolute', top: 8, right: 8 }} />
+            )}
           </div>
         ))}
+      </div>
+      <div style={{ position: 'absolute', bottom: 24, right: 80 }}>
+        {window.AddButton && <window.AddButton onClick={add} label="+ ADD LETTER" />}
       </div>
     </div>
   );
@@ -251,12 +274,20 @@ function ScrapbookGuestbook() {
               transformOrigin: 'left center',
               position: 'relative'
             }}>
-              <div className="sb-hand" style={{ fontSize: 22, lineHeight: '32px', color: '#1c1612', textWrap: 'pretty' }}>
-                {s.msg}
-              </div>
-              <div className="sb-hand" style={{ fontSize: 22, color: s.color, lineHeight: '32px', fontStyle: 'italic' }}>
-                — {s.name}
-              </div>
+              <SBEditableText
+                tag="div"
+                className="sb-hand"
+                value={s.msg}
+                onChange={(v) => store?.updateItem?.('guestbook', s.id, { msg: v })}
+                style={{ fontSize: 22, lineHeight: '32px', color: '#1c1612', textWrap: 'pretty' }}
+              />
+              <SBEditableText
+                tag="div"
+                className="sb-hand"
+                value={`— ${s.name}`}
+                onChange={(v) => store?.updateItem?.('guestbook', s.id, { name: v.replace(/^—\s*/, '') })}
+                style={{ fontSize: 22, color: s.color, lineHeight: '32px', fontStyle: 'italic' }}
+              />
               {window.DeleteButton && s.id && (
                 <window.DeleteButton onClick={() => removeSign(s.id)}
                   style={{ position: 'absolute', top: 4, right: 4 }} />
@@ -297,7 +328,7 @@ function ScrapbookGuestbook() {
       <div style={{ position: 'absolute', bottom: 28, left: 80, right: 80,
                     display: 'flex', justifyContent: 'space-between' }}>
         <div className="sb-mono" style={{ fontSize: 10, color: '#7a6648', letterSpacing: '.2em' }}>
-          {signs.length} entries · stored on this device
+          {signs.length} entries · synced when signed in
         </div>
         <div className="sb-mono" style={{ fontSize: 10, color: '#d44a35', letterSpacing: '.2em' }}>
           ── END · 끝 ──

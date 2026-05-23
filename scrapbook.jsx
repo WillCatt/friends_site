@@ -6,7 +6,11 @@ const SBTape = ({ left, top, right, width = 90, rotate = 0, variant = 'red', z =
        style={{ left, top, right, width, transform: `rotate(${rotate}deg)`, zIndex: z }} />
 );
 
-const SBPolaroid = ({ width = 180, slot, caption, captionKr, rotate = 0, top, left, right, bottom, zIndex = 2, tape = true, tapeColor = 'red' }) => (
+const SBPolaroid = ({
+  width = 180, slot, caption, captionKr, imageUrl, rotate = 0,
+  top, left, right, bottom, zIndex = 2, tape = true, tapeColor = 'red',
+  onImageChange, onCaptionChange, onCaptionKrChange,
+}) => (
   <div className="polaroid lift" style={{
     position: 'absolute', width, top, left, right, bottom,
     transform: `rotate(${rotate}deg)`, zIndex, '--hover-rot': `${rotate}deg`
@@ -15,11 +19,30 @@ const SBPolaroid = ({ width = 180, slot, caption, captionKr, rotate = 0, top, le
       <div className={`washi ${tapeColor === 'red' ? '' : tapeColor}`}
            style={{ top: -8, left: '50%', width: 60, marginLeft: -30, height: 14, opacity: .8 }} />
     )}
-    <div className="photo-slot" data-slot={slot} />
+    <SBEditableImage
+      src={imageUrl}
+      slot={slot}
+      onChange={onImageChange}
+      className="photo-slot-wrap"
+      style={{ aspectRatio: '1/1', position: 'relative' }}
+    />
     {caption && (
       <div style={{ marginTop: 6, textAlign: 'center', lineHeight: 1.1 }}>
-        <div className="sb-hand" style={{ fontSize: 18, color: '#1c1612' }}>{caption}</div>
-        {captionKr && <div className="sb-hand-kr" style={{ fontSize: 13, color: '#544a3a' }}>{captionKr}</div>}
+        <SBEditableText
+          tag="div"
+          className="sb-hand"
+          value={caption}
+          onChange={onCaptionChange}
+          style={{ fontSize: 18, color: '#1c1612' }}
+        />
+        <SBEditableText
+          tag="div"
+          className="sb-hand-kr"
+          value={captionKr}
+          onChange={onCaptionKrChange}
+          placeholder="한글 캡션"
+          style={{ fontSize: 13, color: '#544a3a' }}
+        />
       </div>
     )}
   </div>
@@ -39,8 +62,49 @@ const SBPostit = ({ children, top, left, right, bottom, rotate = -2, bg = '#fef4
   }}>{children}</div>
 );
 
+function SBEditableText({ tag = 'span', value, onChange, className, style, multiline = false, placeholder = '...' }) {
+  const Editable = window.EditableText;
+  if (Editable) {
+    return (
+      <Editable
+        tag={tag}
+        value={value}
+        onChange={onChange}
+        className={className}
+        style={style}
+        multiline={multiline}
+        placeholder={placeholder}
+      />
+    );
+  }
+  const Tag = tag;
+  return <Tag className={className} style={style}>{value || ''}</Tag>;
+}
+
+function SBEditableImage({ src, slot, onChange, style, className }) {
+  const EditableImage = window.EditableImage;
+  if (EditableImage) {
+    return (
+      <EditableImage
+        src={src}
+        slot={slot}
+        onChange={onChange}
+        style={style}
+        className={className}
+      />
+    );
+  }
+  return <div className={`photo-slot ${className || ''}`} data-slot={slot} style={style} />;
+}
+
 // ─── 01. Cover ────────────────────────────────────────────────
 function ScrapbookCover() {
+  const store = window.useStore?.();
+  const cover = store?.content?.cover || window.DIARY_DEFAULTS?.cover || {};
+  const polaroids = cover.polaroids || window.DIARY_DEFAULTS?.cover?.polaroids || [];
+  const updateCover = (field, value) => store?.update?.(`cover.${field}`, value);
+  const updatePolaroid = (id, patch) => store?.updateItem?.('cover.polaroids', id, patch);
+
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       {/* page-edge tear shadow */}
@@ -48,28 +112,45 @@ function ScrapbookCover() {
 
       {/* HEADER: handwritten title + Korean subtitle */}
       <div style={{ position: 'absolute', top: 44, left: 56, right: 56, zIndex: 4 }}>
-        <div className="sb-mono" style={{ fontSize: 11, color: '#7a6648', letterSpacing: '.22em' }}>
-          A SCRAPBOOK · 2026 · MELBOURNE
-        </div>
+        <SBEditableText
+          tag="div"
+          className="sb-mono"
+          value={cover.kicker}
+          onChange={(v) => updateCover('kicker', v)}
+          style={{ fontSize: 11, color: '#7a6648', letterSpacing: '.22em' }}
+        />
         <h1 className="sb-hand" style={{
           fontSize: 96, lineHeight: .95, margin: '4px 0 0', color: '#1c1612',
           letterSpacing: '-0.02em'
         }}>
-          three of us<br/>
-          <span style={{ color: '#d44a35' }}>in </span>
-          <span style={{ fontStyle: 'italic' }}>melbourne</span>
+          <SBEditableText tag="span" value={cover.titleA} onChange={(v) => updateCover('titleA', v)} /><br/>
+          <SBEditableText tag="span" value={cover.titleB} onChange={(v) => updateCover('titleB', v)} style={{ color: '#d44a35' }} />{' '}
+          <SBEditableText tag="span" value={cover.titleC} onChange={(v) => updateCover('titleC', v)} style={{ fontStyle: 'italic' }} />
         </h1>
         <div className="sb-hand-kr" style={{ fontSize: 34, marginTop: 4, color: '#213e6c' }}>
-          정민, 규보 &amp; 윌리엄 <span style={{ color: '#1c1612', fontSize: 22 }}>· 우리 셋의 기록</span>
+          <SBEditableText tag="span" value={cover.subtitleKr} onChange={(v) => updateCover('subtitleKr', v)} />
+          <span style={{ color: '#1c1612', fontSize: 22 }}> · <SBEditableText tag="span" value={cover.subtitleEn} onChange={(v) => updateCover('subtitleEn', v)} /></span>
         </div>
       </div>
 
       {/* Hero polaroid cluster (right side) */}
-      <SBPolaroid width={220} slot="three of us · brunswick" caption="us three" captionKr="우리 셋"
+      <SBPolaroid width={220} slot={polaroids[0]?.slot} caption={polaroids[0]?.caption} captionKr={polaroids[0]?.captionKr}
+        imageUrl={polaroids[0]?.imageUrl}
+        onImageChange={(url) => updatePolaroid(polaroids[0]?.id, { imageUrl: url })}
+        onCaptionChange={(caption) => updatePolaroid(polaroids[0]?.id, { caption })}
+        onCaptionKrChange={(captionKr) => updatePolaroid(polaroids[0]?.id, { captionKr })}
         top={70} right={70} rotate={-4} zIndex={5} tapeColor="blue" />
-      <SBPolaroid width={170} slot="lygon st · gelato" caption="gelato run"
+      <SBPolaroid width={170} slot={polaroids[1]?.slot} caption={polaroids[1]?.caption} captionKr={polaroids[1]?.captionKr}
+        imageUrl={polaroids[1]?.imageUrl}
+        onImageChange={(url) => updatePolaroid(polaroids[1]?.id, { imageUrl: url })}
+        onCaptionChange={(caption) => updatePolaroid(polaroids[1]?.id, { caption })}
+        onCaptionKrChange={(captionKr) => updatePolaroid(polaroids[1]?.id, { captionKr })}
         top={250} right={250} rotate={5} zIndex={4} tapeColor="yellow" />
-      <SBPolaroid width={150} slot="tram 96 · 11pm" caption="last tram home" captionKr="마지막 트램"
+      <SBPolaroid width={150} slot={polaroids[2]?.slot} caption={polaroids[2]?.caption} captionKr={polaroids[2]?.captionKr}
+        imageUrl={polaroids[2]?.imageUrl}
+        onImageChange={(url) => updatePolaroid(polaroids[2]?.id, { imageUrl: url })}
+        onCaptionChange={(caption) => updatePolaroid(polaroids[2]?.id, { caption })}
+        onCaptionKrChange={(captionKr) => updatePolaroid(polaroids[2]?.id, { captionKr })}
         top={340} right={110} rotate={-7} zIndex={6} tapeColor="red" />
 
       {/* TOC — taped strip down the left */}
@@ -107,7 +188,9 @@ function ScrapbookCover() {
         <div className="sb-mono" style={{
           padding: '6px 10px', border: '1.5px solid #1c1612',
           fontSize: 10, letterSpacing: '.18em', color: '#1c1612', background: 'rgba(255,255,255,.4)'
-        }}>FEB — JUN · 2026</div>
+        }}>
+          <SBEditableText tag="span" value={cover.dateRange} onChange={(v) => updateCover('dateRange', v)} />
+        </div>
         <div className="sb-sticker-circle" style={{ width: 46, height: 46, background: '#d44a35', fontSize: 18 }}>멜번</div>
         <div className="sb-sticker-circle" style={{ width: 38, height: 38, background: '#213e6c', fontSize: 13 }}>♥</div>
         <Icons.GumLeaf size={28} color="#6b7a4a" />
@@ -147,7 +230,13 @@ function ScrapbookCover() {
       </div>
 
       <SBPostit top={620} left={420} rotate={-4} width={180}>
-        “you bring vegemite,<br/>i bring 김치” <br/>— rule of the share house
+        <SBEditableText
+          tag="div"
+          value={cover.postit}
+          onChange={(v) => updateCover('postit', v)}
+          multiline
+          style={{ whiteSpace: 'pre-line' }}
+        />
       </SBPostit>
     </div>
   );
@@ -241,27 +330,53 @@ function ScrapbookPhotos() {
 
 // ─── 03. Food Diary ───────────────────────────────────────────
 function ScrapbookFood() {
-  const dishes = [
-    { name: 'tteokbokki', kr: '떡볶이', place: '@home · jeongmin cooked', rating: 5, note: 'extra spicy. william cried (a little)' },
-    { name: 'lune cruffin', kr: '크러핀', place: 'lune · fitzroy', rating: 5, note: '40 min queue. worth it.' },
-    { name: 'kimchi jjigae', kr: '김치찌개', place: 'mukja · cbd', rating: 4, note: '규보 said “mum’s is better”' },
-    { name: 'flat white', kr: '플랫화이트', place: 'patricia · little bourke', rating: 5, note: 'jeongmin: “이게 호주맛이구나”' },
-    { name: 'banh mi', kr: '반미', place: 'nhu lan · richmond', rating: 4, note: 'too much chilli. again.' },
-    { name: 'hotteok', kr: '호떡', place: 'queen vic night mkt', rating: 5, note: 'winter only. wear gloves.' },
-  ];
+  const store = window.useStore?.();
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const header = store?.content?.foodHeader || window.DIARY_DEFAULTS?.foodHeader || {};
+  const dishes = store?.content?.food || window.DIARY_DEFAULTS?.food || [];
+  const receipt = store?.content?.foodReceipt || window.DIARY_DEFAULTS?.foodReceipt || '';
+  const signature = store?.content?.foodSignature || window.DIARY_DEFAULTS?.foodSignature || '';
+  const patch = (id, p) => store?.updateItem?.('food', id, p);
+  const remove = (id) => store?.removeItem?.('food', id);
+  const add = () => store?.addItem?.('food', {
+    id: 'f' + Date.now(),
+    name: 'new dish',
+    kr: '',
+    place: 'place',
+    rating: 5,
+    note: 'memory',
+    imageUrl: null,
+  });
 
-  const Star = ({ filled }) => (
-    <span style={{ color: filled ? '#d44a35' : '#cbb88e', fontSize: 14 }}>★</span>
+  const Star = ({ filled, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!editing}
+      style={{
+        color: filled ? '#d44a35' : '#cbb88e',
+        fontSize: 14,
+        lineHeight: 1,
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+        cursor: editing ? 'pointer' : 'default',
+      }}>★</button>
   );
 
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 40, left: 56, right: 56, zIndex: 3 }}>
-        <div className="sb-mono" style={{ fontSize: 11, color: '#7a6648', letterSpacing: '.22em' }}>
-          03 · FOOD DIARY · 음식 일기
-        </div>
+        <SBEditableText
+          tag="div"
+          className="sb-mono"
+          value={header.kicker}
+          onChange={(v) => store?.update?.('foodHeader.kicker', v)}
+          style={{ fontSize: 11, color: '#7a6648', letterSpacing: '.22em' }}
+        />
         <h2 className="sb-hand" style={{ fontSize: 72, margin: '2px 0 0', lineHeight: .9, color: '#1c1612' }}>
-          what we ate <span style={{ color: '#d44a35', fontStyle: 'italic' }}>(a lot)</span>
+          <SBEditableText tag="span" value={header.title} onChange={(v) => store?.update?.('foodHeader.title', v)} />{' '}
+          <SBEditableText tag="span" value={header.aside} onChange={(v) => store?.update?.('foodHeader.aside', v)} style={{ color: '#d44a35', fontStyle: 'italic' }} />
         </h2>
       </div>
 
@@ -269,16 +384,21 @@ function ScrapbookFood() {
       <div style={{ position: 'absolute', top: 60, right: 56, width: 200, zIndex: 4,
                     background: '#fdf8ea', padding: '12px 14px', transform: 'rotate(3deg)',
                     boxShadow: '0 8px 16px rgba(0,0,0,.12)', border: '1px dashed rgba(0,0,0,.2)' }}>
-        <div className="sb-mono" style={{ fontSize: 9, letterSpacing: '.16em', textAlign: 'center', borderBottom: '1px dashed rgba(0,0,0,.3)', paddingBottom: 6 }}>
-          MELBOURNE FOOD CO.
-        </div>
-        <div className="sb-mono" style={{ fontSize: 10, marginTop: 6, lineHeight: 1.5 }}>
-          152 meals · together<br/>
-          37 cafes ☕<br/>
-          11 한식당<br/>
-          ──────────────<br/>
-          <strong>TOTAL: 행복</strong>
-        </div>
+        <SBEditableText
+          tag="div"
+          className="sb-mono"
+          value={header.receiptTitle}
+          onChange={(v) => store?.update?.('foodHeader.receiptTitle', v)}
+          style={{ fontSize: 9, letterSpacing: '.16em', textAlign: 'center', borderBottom: '1px dashed rgba(0,0,0,.3)', paddingBottom: 6 }}
+        />
+        <SBEditableText
+          tag="div"
+          className="sb-mono"
+          value={receipt}
+          multiline
+          onChange={(v) => store?.update?.('foodReceipt', v)}
+          style={{ fontSize: 10, marginTop: 6, lineHeight: 1.5, whiteSpace: 'pre-line' }}
+        />
       </div>
 
       {/* Dish grid */}
@@ -286,7 +406,7 @@ function ScrapbookFood() {
                     display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(2, 1fr)',
                     gap: 24 }}>
         {dishes.map((d, i) => (
-          <div key={d.name} className="lift" style={{
+          <div key={d.id || d.name} className="lift" style={{
             background: '#fbf6e9', padding: 16, position: 'relative',
             boxShadow: '0 6px 14px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.08)',
             transform: `rotate(${[-1.5, 1, -.5, 1.5, -1, .8][i]}deg)`,
@@ -294,20 +414,53 @@ function ScrapbookFood() {
           }}>
             <SBTape left={'50%'} top={-8} width={56} rotate={(i % 2 ? 4 : -4)}
               variant={['red','blue','yellow','dots','red','blue'][i]} />
-            <div className="photo-slot" data-slot={d.kr} style={{ width: 110, height: 110, flex: '0 0 110px' }} />
+            <SBEditableImage
+              src={d.imageUrl}
+              slot={d.kr}
+              onChange={(url) => patch(d.id, { imageUrl: url })}
+              style={{ width: 110, height: 110, flex: '0 0 110px' }}
+            />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="sb-hand" style={{ fontSize: 26, lineHeight: 1, color: '#1c1612' }}>{d.name}</div>
-              <div className="sb-hand-kr" style={{ fontSize: 18, color: '#213e6c', marginTop: -2 }}>{d.kr}</div>
+              <SBEditableText
+                tag="div"
+                className="sb-hand"
+                value={d.name}
+                onChange={(v) => patch(d.id, { name: v })}
+                style={{ fontSize: 26, lineHeight: 1, color: '#1c1612' }}
+              />
+              <SBEditableText
+                tag="div"
+                className="sb-hand-kr"
+                value={d.kr}
+                onChange={(v) => patch(d.id, { kr: v })}
+                placeholder="한글"
+                style={{ fontSize: 18, color: '#213e6c', marginTop: -2 }}
+              />
               <div className="sb-mono" style={{ fontSize: 9, color: '#7a6648', marginTop: 8, letterSpacing: '.1em' }}>
-                {d.place.toUpperCase()}
+                <SBEditableText
+                  tag="span"
+                  value={d.place}
+                  onChange={(v) => patch(d.id, { place: v })}
+                />
               </div>
               <div style={{ marginTop: 4 }}>
-                {[1,2,3,4,5].map(n => <Star key={n} filled={n <= d.rating} />)}
+                {[1,2,3,4,5].map(n => (
+                  <Star key={n} filled={n <= d.rating} onClick={() => patch(d.id, { rating: n })} />
+                ))}
               </div>
-              <div className="sb-hand" style={{ fontSize: 14, color: '#544a3a', marginTop: 4, lineHeight: 1.2 }}>
-                {d.note}
-              </div>
+              <SBEditableText
+                tag="div"
+                className="sb-hand"
+                value={d.note}
+                onChange={(v) => patch(d.id, { note: v })}
+                multiline
+                style={{ fontSize: 14, color: '#544a3a', marginTop: 4, lineHeight: 1.2 }}
+              />
             </div>
+            {window.DeleteButton && d.id && (
+              <window.DeleteButton onClick={() => remove(d.id)}
+                style={{ position: 'absolute', top: 8, right: 8 }} />
+            )}
           </div>
         ))}
       </div>
@@ -316,13 +469,20 @@ function ScrapbookFood() {
       <div style={{ position: 'absolute', bottom: 20, left: 56, right: 56, display: 'flex',
                     justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="sb-hand-kr" style={{ fontSize: 18, color: '#213e6c' }}>
-          “먹고, 또 먹고” <span className="sb-hand" style={{ color: '#1c1612', fontSize: 16 }}>— eat, then eat again</span>
+          <SBEditableText
+            tag="span"
+            value={signature}
+            onChange={(v) => store?.update?.('foodSignature', v)}
+          />
         </div>
-        <Icons.Cup size={28} color="#1c1612" />
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {window.AddButton && <window.AddButton onClick={add} label="+ ADD DISH" />}
+          <Icons.Cup size={28} color="#1c1612" />
+        </div>
       </div>
     </div>
   );
 }
 
 Object.assign(window, { ScrapbookCover, ScrapbookPhotos, ScrapbookFood,
-                        SBPolaroid, SBTape, SBPostit });
+                        SBPolaroid, SBTape, SBPostit, SBEditableText, SBEditableImage });

@@ -86,18 +86,14 @@ up on your screen within a second.
 
 ---
 
-## What's already editable
+## What's editable
 
 When signed in + edit mode on:
 
-- **Photos** — drop image files onto polaroids, edit captions, drag
-  polaroids to rearrange (positions sync), add/delete polaroids
-- **Inside jokes** — click any quote to edit, add new ones, delete
-- **Guestbook** — anyone can sign (works without sign-in), editors
-  can delete
-
-The Cover, Food, Map, Timeline, Playlist, and Letters pages are
-static for now — easy to extend. The "extending to other sections"
-section of `SETUP.md` shows the pattern.
+- **Cover** — edit title/subtitle/date, cover note, and cover polaroid images/captions
+- **Photos** — drop images onto polaroids, edit captions, drag to rearrange, add/delete polaroids
+- **Food, Map, Timeline, Playlist, Letters** — edit the visible text and image slots; add entries where the page has an add button
+- **Inside jokes** — edit quotes/authors/colors, add new ones, delete
+- **Guestbook** — anyone can sign; editors can edit/delete entries
 
 — have fun. ❤️

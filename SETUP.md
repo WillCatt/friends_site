@@ -120,10 +120,15 @@ browser within ~1 second.
 
 | Page | What you can edit | How |
 |---|---|---|
+| **01 Cover** | Title, subtitle, date, cover note, cover polaroids | Inline, in edit mode |
 | **02 Photos** | Drop image onto any polaroid, edit caption, add/delete polaroids, drag-rearrange | Inline, in edit mode |
-| **07 Inside jokes** | Edit each quote, add new ones, delete | Inline |
-| **09 Guestbook** | Sign (no auth needed for guests), delete entries | Always on |
-| Others (Cover, Food, Map, Timeline, Playlist, Letters) | Static for now — easy to extend (see below) | — |
+| **03 Food** | Dish names, Korean labels, places, notes, ratings, image slots, receipt text | Inline, in edit mode |
+| **04 Map** | Place names, Korean labels, locations, note, add/delete places | Inline, in edit mode |
+| **05 Timeline** | Month cards, image slots, stamps, note | Inline, in edit mode |
+| **06 Playlist** | Cassette title/subtitle/note and all track fields | Inline, in edit mode |
+| **07 Inside jokes** | Edit each quote, author, color, add new ones, delete | Inline |
+| **08 Letters** | Names, recipients, letter lines, signatures, dates, add/delete letters | Inline, in edit mode |
+| **09 Guestbook** | Sign (no auth needed for guests), edit/delete entries | Always on; edit/delete in edit mode |
 
 ### Extending to other sections
 
