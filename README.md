@@ -1,8 +1,8 @@
 # Launching your Melbourne diary — quick start
 
 Hi! This folder is the whole site. It's plain HTML + JS — **no build
-step, no npm**. Open `Melbourne Diary.html` in any modern browser and
-it works.
+step, no npm**. Serve this folder and open `index.html` in any modern
+browser; GitHub Pages will use that file automatically.
 
 There are two ways to run it:
 
@@ -23,7 +23,7 @@ instead:
 ```bash
 # In Terminal, cd into this folder, then:
 python3 -m http.server 8000
-# Visit http://localhost:8000/Melbourne%20Diary.html
+# Visit http://localhost:8000/
 ```
 
 If you have Node installed:
@@ -64,8 +64,9 @@ up on your screen within a second.
 
 | File | What it does |
 |---|---|
-| `Melbourne Diary.html` | **Open this** — the diary itself |
-| `index.html` | The original 3-direction design canvas (Scrapbook / Riso / Café) — keep or delete |
+| `index.html` | **GitHub Pages opens this** — the diary itself |
+| `Melbourne Diary.html` | Legacy diary entrypoint; same app, kept for old local links |
+| `directions.html` | The original 3-direction design canvas (Scrapbook / Riso / Café) — keep or delete |
 | `styles.css` | All visual styling |
 | `supabase-config.js` | **Paste your Supabase keys here** |
 | `SETUP.md` | Full Supabase + hosting walkthrough |

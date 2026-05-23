@@ -1,7 +1,7 @@
 # 셋이 멜번에서 · Setup guide
 
 This is your scrapbook diary. Out of the box it runs locally — open
-`Melbourne Diary.html` and edit anything: drop images onto polaroid
+`index.html` and edit anything: drop images onto polaroid
 slots, click captions, add post-its, sign the guestbook. Everything
 saves to your browser only.
 
@@ -109,7 +109,8 @@ that work in 30 seconds:
   folder onto the page. You get `https://your-name.netlify.app` instantly.
 - **Vercel** — `npx vercel` in the project folder, follow prompts.
 - **Cloudflare Pages** — connect a GitHub repo with these files.
-- **GitHub Pages** — push to a repo, enable Pages in repo settings.
+- **GitHub Pages** — push to a repo, enable Pages in repo settings. The
+  root URL serves `index.html`, which is the final diary app.
 
 Send the URL to your friends. Each visits, clicks **SIGN IN TO EDIT**,
 puts in their account, and edits live. Changes show up in everyone's
