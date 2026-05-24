@@ -7,7 +7,7 @@ window.DIARY_CONFIG = {
   // From your Supabase project: Project Settings → API → "Project URL"
   SUPABASE_URL: 'https://ehrjlowmxxcfzxqbsrnf.supabase.co',
   // From the same page: "Project API keys" → "anon" / "public"
-  SUPABASE_ANON_KEY: 'sb_publishable_8zlDj9xtYmXA5iB9wKq_0g_grYs8GziQ',
+  SUPABASE_ANON_KEY: 'sb_publishable_8zlDj9xtYmXA5iB9wKq_0g_grYs8Gzi',
 
   // Name of the Storage bucket you created for diary photos.
   // (See SETUP.md step 3.)
