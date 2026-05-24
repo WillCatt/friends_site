@@ -51,10 +51,45 @@ function useSBDragPosition(initial = { left: 0, top: 0 }, onCommit, enabled = tr
   };
 }
 
+function normalizeSBRotation(value) {
+  const n = Number(value) || 0;
+  return Math.round((((n + 180) % 360) + 360) % 360 - 180);
+}
+
+function SBRotateControls({ value = 0, onChange, style }) {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  if (!editing) return null;
+  const set = (delta) => onChange?.(normalizeSBRotation((Number(value) || 0) + delta));
+  return (
+    <div className="sb-object-tools" style={style} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      <button type="button" className="sb-tool-btn" title="Rotate left" onClick={() => set(-5)}>↺</button>
+      <button type="button" className="sb-tool-btn" title="Reset rotation" onClick={() => onChange?.(0)}>0</button>
+      <button type="button" className="sb-tool-btn" title="Rotate right" onClick={() => set(5)}>↻</button>
+    </div>
+  );
+}
+
+function SBStickerColorPicker({ value = '#d44a35', onChange, style }) {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  if (!editing) return null;
+  return (
+    <input
+      type="color"
+      className="sb-color-picker"
+      title="Sticker colour"
+      value={value || '#d44a35'}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange?.(e.target.value)}
+      style={style}
+    />
+  );
+}
+
 const SBPolaroid = ({
   width = 180, slot, caption, captionKr, imageUrl, rotate = 0,
   top, left, right, bottom, zIndex = 2, tape = true, tapeColor = 'red',
-  onImageChange, onCaptionChange, onCaptionKrChange, movable = false, onMove,
+  onImageChange, onCaptionChange, onCaptionKrChange, movable = false, onMove, onRotate,
 }) => {
   const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
   const { pos, dragHandlers } = useSBDragPosition({ left, top }, onMove, movable && editing);
@@ -69,6 +104,9 @@ const SBPolaroid = ({
       {tape && (
         <div className={`washi ${tapeColor === 'red' ? '' : tapeColor}`}
              style={{ top: -8, left: '50%', width: 60, marginLeft: -30, height: 14, opacity: .8 }} />
+      )}
+      {movable && (
+        <SBRotateControls value={rotate} onChange={onRotate} />
       )}
       <SBEditableImage
         src={imageUrl}
@@ -176,6 +214,7 @@ function SBMovableNote({ note, onPatch, onDelete, zIndex = 9 }) {
       '--hover-rot': `${note.rot || 0}deg`,
       cursor: editing ? 'grab' : undefined,
     }}>
+      <SBRotateControls value={note.rot || 0} onChange={(rot) => onPatch?.({ rot })} />
       <SBEditableText
         tag="div"
         value={note.text}
@@ -266,6 +305,12 @@ function ScrapbookElement({ item, onPatch, onDelete }) {
       cursor: editing ? 'grab' : 'default',
     }}>
       <SBElementGraphic item={element} />
+      <SBRotateControls value={item.rot || 0} onChange={(rot) => onPatch?.({ rot })} />
+      <SBStickerColorPicker
+        value={item.color || '#d44a35'}
+        onChange={(color) => onPatch?.({ color, variant: '' })}
+        style={{ position: 'absolute', left: -11, bottom: -11, zIndex: 5 }}
+      />
       {window.DeleteButton && editing && (
         <window.DeleteButton onClick={onDelete}
           style={{ position: 'absolute', top: -10, right: -10, zIndex: 4 }} />
@@ -413,6 +458,7 @@ function ScrapbookCover() {
           tapeColor={p.tape}
           movable
           onMove={(pos) => updatePolaroid(p.id, { left: Math.round(pos.left), top: Math.round(pos.top) })}
+          onRotate={(rot) => updatePolaroid(p.id, { rot })}
           onImageChange={(url) => updatePolaroid(p.id, { imageUrl: url })}
           onCaptionChange={(caption) => updatePolaroid(p.id, { caption })}
           onCaptionKrChange={(captionKr) => updatePolaroid(p.id, { captionKr })}
@@ -754,4 +800,5 @@ function ScrapbookFood() {
 
 Object.assign(window, { ScrapbookCover, ScrapbookPhotos, ScrapbookFood,
                         SBPolaroid, SBTape, SBPostit, SBEditableText, SBEditableImage,
-                        useSBDragPosition, SBMovableNote, ScrapbookElements });
+                        useSBDragPosition, SBMovableNote, ScrapbookElements,
+                        SBRotateControls, SBStickerColorPicker, normalizeSBRotation });

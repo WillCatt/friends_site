@@ -172,6 +172,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Inter Tight", system-ui,
 .lift { transition: transform .25s cubic-bezier(.2,.7,.3,1), box-shadow .25s; }
 .lift:hover { transform: translateY(-3px) rotate(var(--hover-rot, 0deg)); }
 
+.sb-object-tools {
+  position: absolute;
+  top: -16px;
+  left: -10px;
+  z-index: 70;
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  pointer-events: auto;
+}
+.sb-tool-btn {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid #1c1612;
+  background: #f3e8cf;
+  color: #1c1612;
+  box-shadow: 2px 2px 0 #1c1612;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+.sb-tool-btn:hover { background: #fef4a8; }
+.sb-color-picker {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1.5px solid #1c1612;
+  background: #f3e8cf;
+  box-shadow: 2px 2px 0 #1c1612;
+  cursor: pointer;
+}
+
 .tilt-l { transform: rotate(-3deg); }
 .tilt-r { transform: rotate(3deg); }
 .tilt-l2 { transform: rotate(-1.5deg); }
@@ -408,4 +442,3 @@ html.diary-mode, .diary-mode body { background: #ebdcb8; }
 /* Show "DROP IMAGE" hint when hovering image slots in edit mode */
 .editing [class*="polaroid"]:hover .edit-hint,
 .editing .lift:hover .edit-hint { opacity: 1 !important; }
-

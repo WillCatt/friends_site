@@ -19,7 +19,8 @@ function useDraggable(initial = { x: 0, y: 0 }, onCommit) {
 
   const onPointerDown = (e) => {
     if (e.button !== 0) return;
-    drag.current = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, scale: getScale() };
+    if (e.target.closest?.('.editable-text, button, input, textarea')) return;
+    drag.current = { sx: e.clientX, sy: e.clientY, ox: pos.x, oy: pos.y, scale: getScale(), next: pos };
     e.currentTarget.setPointerCapture(e.pointerId);
     e.currentTarget.classList.add('dragging');
     e.stopPropagation();
@@ -27,11 +28,13 @@ function useDraggable(initial = { x: 0, y: 0 }, onCommit) {
   const onPointerMove = (e) => {
     if (!drag.current) return;
     const d = drag.current;
-    setPos({ x: d.ox + (e.clientX - d.sx) / d.scale, y: d.oy + (e.clientY - d.sy) / d.scale });
+    const next = { x: d.ox + (e.clientX - d.sx) / d.scale, y: d.oy + (e.clientY - d.sy) / d.scale };
+    d.next = next;
+    setPos(next);
   };
   const onPointerUp = (e) => {
     if (!drag.current) return;
-    const finalPos = { ...pos };
+    const finalPos = drag.current.next || pos;
     drag.current = null;
     e.currentTarget.classList.remove('dragging');
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
@@ -51,9 +54,13 @@ function DraggablePolaroid({ photo, onCommit, onPatch, onDelete, zIndex = 2 }) {
         position: 'absolute', width: photo.width || 180,
         top: photo.top, left: photo.left, zIndex,
         transform: `translate(${pos.x}px, ${pos.y}px) rotate(${photo.rot || 0}deg)`,
+        '--hover-rot': `${photo.rot || 0}deg`,
       }}>
       <div className={`washi ${photo.tape === 'red' ? '' : photo.tape}`}
         style={{ top: -8, left: '50%', width: 60, marginLeft: -30, height: 14, opacity: .8 }} />
+      {window.SBRotateControls && (
+        <window.SBRotateControls value={photo.rot || 0} onChange={(rot) => onPatch?.({ rot })} />
+      )}
       <EditableImage
         src={photo.imageUrl}
         slot={photo.slot}

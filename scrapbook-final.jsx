@@ -21,8 +21,12 @@ function ScrapbookJokeNote({ joke, update, remove }) {
       transform: `rotate(${joke.rot}deg)`,
       fontFamily: 'Caveat, cursive', fontWeight: 600, fontSize: 18, lineHeight: 1.15,
       color: '#3a2e1c',
+      '--hover-rot': `${joke.rot || 0}deg`,
       cursor: editing ? 'grab' : undefined,
     }}>
+      {window.SBRotateControls && (
+        <window.SBRotateControls value={joke.rot || 0} onChange={(rot) => update(joke.id, { rot })} />
+      )}
       {window.EditableText ? (
         <window.EditableText
           tag="div"
@@ -157,7 +161,11 @@ function ScrapbookLetters() {
             display: 'flex', flexDirection: 'column',
             backgroundImage: 'repeating-linear-gradient(180deg, transparent 0 30px, rgba(0,0,0,.06) 30px 31px)',
             backgroundSize: '100% 100%',
+            '--hover-rot': `${l.rot || 0}deg`,
           }}>
+            {window.SBRotateControls && (
+              <window.SBRotateControls value={l.rot || 0} onChange={(rot) => patch(l.id, { rot })} />
+            )}
             {/* tape across top */}
             <div className={`washi ${i === 1 ? 'blue' : i === 2 ? 'yellow' : ''}`}
               style={{ position: 'absolute', top: -10, left: '50%', width: 110, marginLeft: -55, height: 16,
@@ -289,6 +297,9 @@ function ScrapbookGuestbook() {
               transformOrigin: 'left center',
               position: 'relative'
             }}>
+              {window.SBRotateControls && s.id && (
+                <window.SBRotateControls value={s.rot || 0} onChange={(rot) => store?.updateItem?.('guestbook', s.id, { rot })} />
+              )}
               <SBEditableText
                 tag="div"
                 className="sb-hand"
