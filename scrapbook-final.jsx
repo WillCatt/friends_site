@@ -3,6 +3,55 @@
 // ═══════════════════════════════════════════════════════════════
 // 07 · INSIDE JOKES (corkboard of post-its)
 // ═══════════════════════════════════════════════════════════════
+function ScrapbookJokeNote({ joke, update, remove }) {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const dragHook = window.useSBDragPosition || ((initial) => ({ pos: initial, dragHandlers: {} }));
+  const { pos, dragHandlers } = dragHook(
+    { left: joke.left || 0, top: joke.top || 0 },
+    (next) => update(joke.id, { left: Math.round(next.left), top: Math.round(next.top) }),
+    editing
+  );
+
+  return (
+    <div key={joke.id || joke.text} className={`lift${editing ? ' draggable' : ''}`} {...dragHandlers} style={{
+      position: 'absolute', top: pos.top, left: pos.left, width: joke.w,
+      background: joke.bg,
+      padding: '14px 14px 18px',
+      boxShadow: '0 10px 16px rgba(0,0,0,.15), 0 2px 3px rgba(0,0,0,.08)',
+      transform: `rotate(${joke.rot}deg)`,
+      fontFamily: 'Caveat, cursive', fontWeight: 600, fontSize: 18, lineHeight: 1.15,
+      color: '#3a2e1c',
+      cursor: editing ? 'grab' : undefined,
+    }}>
+      {window.EditableText ? (
+        <window.EditableText
+          tag="div"
+          value={joke.text}
+          multiline
+          style={{ fontSize: 16, color: '#1c1612', lineHeight: 1.25, marginBottom: 4 }}
+          onChange={(v) => update(joke.id, { text: v })} />
+      ) : (
+        <div style={{ fontSize: 16, color: '#1c1612', lineHeight: 1.25, marginBottom: 4 }}>{joke.text}</div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="sb-mono" style={{ fontSize: 10, letterSpacing: '.16em', color: '#7a4a2a' }}>
+          — <SBEditableText
+            tag="span"
+            value={joke.who}
+            onChange={(v) => update(joke.id, { who: v })}
+          />
+        </div>
+        {window.DeleteButton && joke.id && (
+          <window.DeleteButton onClick={() => remove(joke.id)} />
+        )}
+      </div>
+      {window.ColorSwatch && (
+        <window.ColorSwatch value={joke.bg} onChange={(bg) => update(joke.id, { bg })} />
+      )}
+    </div>
+  );
+}
+
 function ScrapbookJokes() {
   const store = window.useStore?.();
   const auth  = window.useAuth?.();
@@ -42,41 +91,7 @@ function ScrapbookJokes() {
       </svg>
 
       {jokes.map((j) => (
-        <div key={j.id || j.text} className="lift" style={{
-          position: 'absolute', top: j.top, left: j.left, width: j.w,
-          background: j.bg,
-          padding: '14px 14px 18px',
-          boxShadow: '0 10px 16px rgba(0,0,0,.15), 0 2px 3px rgba(0,0,0,.08)',
-          transform: `rotate(${j.rot}deg)`,
-          fontFamily: 'Caveat, cursive', fontWeight: 600, fontSize: 18, lineHeight: 1.15,
-          color: '#3a2e1c'
-        }}>
-          {window.EditableText ? (
-            <window.EditableText
-              tag="div"
-              value={j.text}
-              multiline
-              style={{ fontSize: 16, color: '#1c1612', lineHeight: 1.25, marginBottom: 4 }}
-              onChange={(v) => update(j.id, { text: v })} />
-          ) : (
-            <div style={{ fontSize: 16, color: '#1c1612', lineHeight: 1.25, marginBottom: 4 }}>{j.text}</div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="sb-mono" style={{ fontSize: 10, letterSpacing: '.16em', color: '#7a4a2a' }}>
-              — <SBEditableText
-                tag="span"
-                value={j.who}
-                onChange={(v) => update(j.id, { who: v })}
-              />
-            </div>
-            {window.DeleteButton && j.id && (
-              <window.DeleteButton onClick={() => remove(j.id)} />
-            )}
-          </div>
-          {window.ColorSwatch && (
-            <window.ColorSwatch value={j.bg} onChange={(bg) => update(j.id, { bg })} />
-          )}
-        </div>
+        <ScrapbookJokeNote key={j.id || j.text} joke={j} update={update} remove={remove} />
       ))}
 
       {/* Bonus stickers */}

@@ -14,20 +14,31 @@ function useFitToViewport(designW = 1280, designH = 880, margin = 60) {
   }, []);
 }
 
-function CassetteToggle({ playing, setPlaying }) {
+function CassetteToggle({ track, playing, onToggle, onPrev, onNext }) {
+  const hasAudio = !!track?.url;
   return (
-    <div className={`cassette${playing ? ' playing' : ''}`} onClick={() => setPlaying(p => !p)}>
+    <div className={`cassette${playing ? ' playing' : ''}`} onClick={onToggle}>
       <div className="sb-mono" style={{ fontSize: 9, letterSpacing: '.22em', opacity: .7 }}>
-        SIDE A · {playing ? 'PLAYING' : 'PAUSED'}
+        SIDE A · {playing && hasAudio ? 'PLAYING' : playing ? 'SELECTED' : 'PAUSED'}
       </div>
-      <div className="sb-hand" style={{ fontSize: 22, lineHeight: 1 }}>
-        {playing ? 'our songs ♫' : 'press play'}
+      <div className="sb-hand" style={{ fontSize: 22, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {track?.t || 'press play'}
+      </div>
+      <div className="sb-mono" style={{ fontSize: 9, letterSpacing: '.12em', opacity: .65, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {track?.a || 'our songs'}
+      </div>
+      <div className="sb-mono" style={{ fontSize: 8, letterSpacing: '.12em', opacity: .5, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {hasAudio ? 'AUDIO LINKED' : 'ADD AUDIO URL ON PAGE 06'}
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
         <div className="cassette-spool" />
         <div className="cassette-spool" style={{ animationDirection: 'reverse' }} />
         <div style={{ flex: 1, height: 4, background: '#d44a35', borderRadius: 2 }} />
         <span className="sb-mono" style={{ fontSize: 11 }}>{playing ? '❚❚' : '▶'}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onPrev?.(); }} className="cassette-skip">PREV</button>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onNext?.(); }} className="cassette-skip">NEXT</button>
       </div>
     </div>
   );
@@ -48,9 +59,45 @@ const SECTIONS = [
 function DiaryBody() {
   useFitToViewport();
   const { editMode } = useEditMode();
-  const [playing, setPlaying] = React.useState(false);
+  const store = useStore();
   const [activeIdx, setActiveIdx] = React.useState(0);
   const [signInOpen, setSignInOpen] = React.useState(false);
+  const audioRef = React.useRef(null);
+  const tracks = store?.content?.playlist || [];
+  const player = store?.content?.player || {};
+  const currentIdx = Math.max(0, tracks.findIndex(t => t.id === player.currentTrackId));
+  const currentTrack = tracks[currentIdx] || tracks[0] || null;
+  const setPlaying = (value) => {
+    const next = typeof value === 'function' ? value(!!player.playing) : value;
+    if (!player.currentTrackId && currentTrack?.id) store?.update?.('player.currentTrackId', currentTrack.id);
+    store?.update?.('player.playing', next);
+  };
+  const setCurrentTrack = (idx) => {
+    const track = tracks[(idx + tracks.length) % tracks.length];
+    if (track) store?.update?.('player.currentTrackId', track.id);
+  };
+
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!currentTrack?.url) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load?.();
+      return;
+    }
+
+    if (audio.getAttribute('src') !== currentTrack.url) audio.setAttribute('src', currentTrack.url);
+    if (player.playing) {
+      audio.play().catch((err) => {
+        console.warn('Audio play failed', err);
+        store?.update?.('player.playing', false);
+      });
+    } else {
+      audio.pause();
+    }
+  }, [currentTrack?.id, currentTrack?.url, player.playing]);
 
   // Toggle .editing class on body so CSS can highlight editable surfaces
   React.useEffect(() => {
@@ -99,7 +146,21 @@ function DiaryBody() {
       <EditChrome onSignInClick={() => setSignInOpen(true)} />
       {signInOpen && <SignInModal onClose={() => setSignInOpen(false)} />}
 
-      <CassetteToggle playing={playing} setPlaying={setPlaying} />
+      <CassetteToggle
+        track={currentTrack}
+        playing={!!player.playing}
+        onToggle={() => setPlaying(p => !p)}
+        onPrev={() => tracks.length && setCurrentTrack(currentIdx - 1)}
+        onNext={() => tracks.length && setCurrentTrack(currentIdx + 1)}
+      />
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        onEnded={() => {
+          if (tracks.length > 1) setCurrentTrack(currentIdx + 1);
+          else store?.update?.('player.playing', false);
+        }}
+      />
 
       {SECTIONS.map((s, i) => {
         const Comp = window[s.Comp];
@@ -108,6 +169,7 @@ function DiaryBody() {
             data-screen-label={`${String(i+1).padStart(2,'0')} ${s.label}`}>
             <div className="diary-canvas">
               {Comp ? <Comp /> : <div style={{ padding: 80 }}>missing: {s.Comp}</div>}
+              {window.ScrapbookElements && <window.ScrapbookElements pageId={s.id} />}
             </div>
           </section>
         );

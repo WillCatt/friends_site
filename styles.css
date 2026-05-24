@@ -292,6 +292,17 @@ html.diary-mode, .diary-mode body { background: #ebdcb8; }
   user-select: none;
 }
 .cassette:hover { transform: translateY(-2px); }
+.cassette-skip {
+  background: transparent;
+  border: 1px solid rgba(243,232,207,.5);
+  color: #f3e8cf;
+  padding: 3px 7px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 8px;
+  letter-spacing: .16em;
+  cursor: pointer;
+}
+.cassette-skip:hover { background: rgba(243,232,207,.12); }
 .cassette-spool {
   width: 26px; height: 26px;
   border-radius: 50%;
@@ -397,5 +408,4 @@ html.diary-mode, .diary-mode body { background: #ebdcb8; }
 /* Show "DROP IMAGE" hint when hovering image slots in edit mode */
 .editing [class*="polaroid"]:hover .edit-hint,
 .editing .lift:hover .edit-hint { opacity: 1 !important; }
-
 

@@ -6,47 +6,99 @@ const SBTape = ({ left, top, right, width = 90, rotate = 0, variant = 'red', z =
        style={{ left, top, right, width, transform: `rotate(${rotate}deg)`, zIndex: z }} />
 );
 
+function useSBDragPosition(initial = { left: 0, top: 0 }, onCommit, enabled = true) {
+  const [pos, setPos] = React.useState({ left: initial.left || 0, top: initial.top || 0 });
+  const drag = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!drag.current) setPos({ left: initial.left || 0, top: initial.top || 0 });
+  }, [initial.left, initial.top]);
+
+  const getScale = () => parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--page-scale')
+  ) || 1;
+
+  const onPointerDown = (e) => {
+    if (!enabled || e.button !== 0) return;
+    if (e.target.closest?.('.editable-text, button, input, textarea')) return;
+    drag.current = { sx: e.clientX, sy: e.clientY, left: pos.left, top: pos.top, scale: getScale(), next: pos };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.currentTarget.classList.add('dragging');
+    e.stopPropagation();
+  };
+  const onPointerMove = (e) => {
+    if (!drag.current) return;
+    const d = drag.current;
+    const next = {
+      left: d.left + (e.clientX - d.sx) / d.scale,
+      top: d.top + (e.clientY - d.sy) / d.scale,
+    };
+    d.next = next;
+    setPos(next);
+  };
+  const onPointerUp = (e) => {
+    if (!drag.current) return;
+    const next = drag.current.next || pos;
+    drag.current = null;
+    e.currentTarget.classList.remove('dragging');
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
+    onCommit?.(next);
+  };
+
+  return {
+    pos,
+    dragHandlers: enabled ? { onPointerDown, onPointerMove, onPointerUp } : {},
+  };
+}
+
 const SBPolaroid = ({
   width = 180, slot, caption, captionKr, imageUrl, rotate = 0,
   top, left, right, bottom, zIndex = 2, tape = true, tapeColor = 'red',
-  onImageChange, onCaptionChange, onCaptionKrChange,
-}) => (
-  <div className="polaroid lift" style={{
-    position: 'absolute', width, top, left, right, bottom,
-    transform: `rotate(${rotate}deg)`, zIndex, '--hover-rot': `${rotate}deg`
-  }}>
-    {tape && (
-      <div className={`washi ${tapeColor === 'red' ? '' : tapeColor}`}
-           style={{ top: -8, left: '50%', width: 60, marginLeft: -30, height: 14, opacity: .8 }} />
-    )}
-    <SBEditableImage
-      src={imageUrl}
-      slot={slot}
-      onChange={onImageChange}
-      className="photo-slot-wrap"
-      style={{ aspectRatio: '1/1', position: 'relative' }}
-    />
-    {caption && (
-      <div style={{ marginTop: 6, textAlign: 'center', lineHeight: 1.1 }}>
-        <SBEditableText
-          tag="div"
-          className="sb-hand"
-          value={caption}
-          onChange={onCaptionChange}
-          style={{ fontSize: 18, color: '#1c1612' }}
-        />
-        <SBEditableText
-          tag="div"
-          className="sb-hand-kr"
-          value={captionKr}
-          onChange={onCaptionKrChange}
-          placeholder="한글 캡션"
-          style={{ fontSize: 13, color: '#544a3a' }}
-        />
-      </div>
-    )}
-  </div>
-);
+  onImageChange, onCaptionChange, onCaptionKrChange, movable = false, onMove,
+}) => {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const { pos, dragHandlers } = useSBDragPosition({ left, top }, onMove, movable && editing);
+  const position = movable ? { left: pos.left, top: pos.top } : { top, left, right, bottom };
+
+  return (
+    <div className={`polaroid lift${movable && editing ? ' draggable' : ''}`} {...dragHandlers} style={{
+      position: 'absolute', width, ...position,
+      transform: `rotate(${rotate}deg)`, zIndex, '--hover-rot': `${rotate}deg`,
+      cursor: movable && editing ? 'grab' : undefined,
+    }}>
+      {tape && (
+        <div className={`washi ${tapeColor === 'red' ? '' : tapeColor}`}
+             style={{ top: -8, left: '50%', width: 60, marginLeft: -30, height: 14, opacity: .8 }} />
+      )}
+      <SBEditableImage
+        src={imageUrl}
+        slot={slot}
+        onChange={onImageChange}
+        className="photo-slot-wrap"
+        style={{ aspectRatio: '1/1', position: 'relative' }}
+      />
+      {caption && (
+        <div style={{ marginTop: 6, textAlign: 'center', lineHeight: 1.1 }}>
+          <SBEditableText
+            tag="div"
+            className="sb-hand"
+            value={caption}
+            onChange={onCaptionChange}
+            style={{ fontSize: 18, color: '#1c1612' }}
+          />
+          <SBEditableText
+            tag="div"
+            className="sb-hand-kr"
+            value={captionKr}
+            onChange={onCaptionKrChange}
+            placeholder="한글 캡션"
+            style={{ fontSize: 13, color: '#544a3a' }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SBPostit = ({ children, top, left, right, bottom, rotate = -2, bg = '#fef4a8', width = 140, style }) => (
   <div className="lift" style={{
@@ -97,13 +149,226 @@ function SBEditableImage({ src, slot, onChange, style, className }) {
   return <div className={`photo-slot ${className || ''}`} data-slot={slot} style={style} />;
 }
 
+function SBMovableNote({ note, onPatch, onDelete, zIndex = 9 }) {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const { pos, dragHandlers } = useSBDragPosition(
+    { left: note.left || 0, top: note.top || 0 },
+    (next) => onPatch?.({ left: Math.round(next.left), top: Math.round(next.top) }),
+    editing
+  );
+
+  return (
+    <div className={`lift${editing ? ' draggable' : ''}`} {...dragHandlers} style={{
+      position: 'absolute',
+      top: pos.top,
+      left: pos.left,
+      width: note.width || 180,
+      zIndex,
+      background: note.bg || '#fef4a8',
+      padding: '14px 14px 18px',
+      boxShadow: '0 10px 16px rgba(0,0,0,.15), 0 2px 3px rgba(0,0,0,.08)',
+      transform: `rotate(${note.rot || 0}deg)`,
+      fontFamily: 'Caveat, cursive',
+      fontWeight: 600,
+      fontSize: 18,
+      lineHeight: 1.15,
+      color: '#3a2e1c',
+      '--hover-rot': `${note.rot || 0}deg`,
+      cursor: editing ? 'grab' : undefined,
+    }}>
+      <SBEditableText
+        tag="div"
+        value={note.text}
+        onChange={(text) => onPatch?.({ text })}
+        multiline
+        style={{ whiteSpace: 'pre-line' }}
+      />
+      {window.ColorSwatch && (
+        <window.ColorSwatch value={note.bg} onChange={(bg) => onPatch?.({ bg })} />
+      )}
+      {window.DeleteButton && editing && (
+        <window.DeleteButton onClick={onDelete}
+          style={{ position: 'absolute', top: -10, right: -10, zIndex: 4 }} />
+      )}
+    </div>
+  );
+}
+
+const SCRAPBOOK_ELEMENT_PRESETS = {
+  heart: { label: 'HEART', color: '#d44a35', size: 30 },
+  star: { label: 'STAR', color: '#d39836', size: 30 },
+  leaf: { label: 'LEAF', color: '#6b7a4a', size: 34 },
+  tram: { label: 'TRAM', color: '#d44a35', size: 44 },
+  magpie: { label: 'BIRD', color: '#1c1612', size: 42 },
+  pouch: { label: 'POUCH', color: '#213e6c', size: 40 },
+  tape: { label: 'TAPE', color: '#d44a35', size: 90 },
+  label: { label: 'LABEL', color: '#fef4a8', size: 120 },
+};
+
+function SBElementGraphic({ item }) {
+  const size = item.size || 32;
+  const color = item.color || '#d44a35';
+  if (item.type === 'heart') return <Icons.Heart size={size} color={color} />;
+  if (item.type === 'star') return <Icons.Star size={size} color={color} />;
+  if (item.type === 'leaf') return <Icons.GumLeaf size={size} color={color} />;
+  if (item.type === 'tram') return <Icons.Tram size={size} color={color} />;
+  if (item.type === 'magpie') return <Icons.Magpie size={size} color={color} />;
+  if (item.type === 'pouch') return <Icons.Pouch size={size} color={color} />;
+  if (item.type === 'tape') {
+    return (
+      <div className={`washi ${item.variant || ''}`} style={{
+        position: 'relative',
+        width: size,
+        height: 18,
+        background: item.variant ? undefined : color,
+      }} />
+    );
+  }
+  return (
+    <div style={{
+      minWidth: size,
+      background: color,
+      padding: '8px 12px',
+      boxShadow: '0 8px 14px rgba(0,0,0,.16)',
+      fontFamily: 'Caveat, cursive',
+      fontSize: 18,
+      lineHeight: 1.05,
+      color: '#1c1612',
+    }}>
+      <SBEditableText
+        tag="div"
+        value={item.text || 'label'}
+        onChange={(text) => item.onTextChange?.(text)}
+        multiline
+        style={{ whiteSpace: 'pre-line' }}
+      />
+    </div>
+  );
+}
+
+function ScrapbookElement({ item, onPatch, onDelete }) {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const { pos, dragHandlers } = useSBDragPosition(
+    { left: item.left || 0, top: item.top || 0 },
+    (next) => onPatch?.({ left: Math.round(next.left), top: Math.round(next.top) }),
+    editing
+  );
+  const element = { ...item, onTextChange: (text) => onPatch?.({ text }) };
+
+  return (
+    <div className={`scrapbook-element${editing ? ' draggable' : ''}`} {...dragHandlers} style={{
+      position: 'absolute',
+      top: pos.top,
+      left: pos.left,
+      zIndex: item.zIndex || 35,
+      transform: `rotate(${item.rot || 0}deg)`,
+      pointerEvents: editing ? 'auto' : 'none',
+      cursor: editing ? 'grab' : 'default',
+    }}>
+      <SBElementGraphic item={element} />
+      {window.DeleteButton && editing && (
+        <window.DeleteButton onClick={onDelete}
+          style={{ position: 'absolute', top: -10, right: -10, zIndex: 4 }} />
+      )}
+    </div>
+  );
+}
+
+function ScrapbookElements({ pageId }) {
+  const store = window.useStore?.();
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const allItems = store?.content?.scrapbookElements || [];
+  const items = allItems.filter((item) => item.pageId === pageId);
+  const patch = (id, p) => store?.updateItem?.('scrapbookElements', id, p);
+  const remove = (id) => store?.removeItem?.('scrapbookElements', id);
+  const add = (type) => {
+    const preset = SCRAPBOOK_ELEMENT_PRESETS[type] || SCRAPBOOK_ELEMENT_PRESETS.star;
+    const variants = ['', 'blue', 'yellow', 'dots'];
+    store?.addItem?.('scrapbookElements', {
+      id: 'el' + Date.now(),
+      pageId,
+      type,
+      text: type === 'label' ? 'new label' : '',
+      top: 170 + Math.random() * 420,
+      left: 160 + Math.random() * 840,
+      rot: (Math.random() * 16) - 8,
+      size: preset.size,
+      color: preset.color,
+      variant: type === 'tape' ? variants[items.length % variants.length] : '',
+      zIndex: 35 + (items.length % 10),
+    });
+  };
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 35, pointerEvents: 'none' }}>
+      {items.map((item) => (
+        <ScrapbookElement
+          key={item.id}
+          item={item}
+          onPatch={(p) => patch(item.id, p)}
+          onDelete={() => remove(item.id)}
+        />
+      ))}
+      {editing && (
+        <div className="scrapbook-element-tray" style={{
+          position: 'absolute',
+          left: 54,
+          bottom: 54,
+          display: 'flex',
+          gap: 6,
+          padding: 8,
+          background: 'rgba(243,232,207,.92)',
+          border: '1.5px solid #1c1612',
+          boxShadow: '3px 3px 0 #1c1612',
+          pointerEvents: 'auto',
+          zIndex: 80,
+        }}>
+          {Object.entries(SCRAPBOOK_ELEMENT_PRESETS).map(([type, preset]) => (
+            <button key={type} type="button" onClick={() => add(type)} style={{
+              background: '#1c1612',
+              color: '#f3e8cf',
+              border: 'none',
+              padding: '6px 8px',
+              fontFamily: 'IBM Plex Mono, monospace',
+              fontSize: 9,
+              letterSpacing: '.12em',
+              cursor: 'pointer',
+            }}>
+              + {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── 01. Cover ────────────────────────────────────────────────
 function ScrapbookCover() {
   const store = window.useStore?.();
   const cover = store?.content?.cover || window.DIARY_DEFAULTS?.cover || {};
   const polaroids = cover.polaroids || window.DIARY_DEFAULTS?.cover?.polaroids || [];
+  const notes = cover.notes || window.DIARY_DEFAULTS?.cover?.notes || [];
   const updateCover = (field, value) => store?.update?.(`cover.${field}`, value);
   const updatePolaroid = (id, patch) => store?.updateItem?.('cover.polaroids', id, patch);
+  const updateNote = (id, patch) => store?.updateItem?.('cover.notes', id, patch);
+  const removeNote = (id) => store?.removeItem?.('cover.notes', id);
+  const addNote = () => {
+    const palette = ['#fef4a8', '#fbd9c9', '#dff0d6', '#cde0f2'];
+    store?.addItem?.('cover.notes', {
+      id: 'cn' + Date.now(),
+      text: 'new note...',
+      top: 570 + Math.random() * 90,
+      left: 380 + Math.random() * 240,
+      width: 180,
+      rot: (Math.random() * 8) - 4,
+      bg: palette[notes.length % palette.length],
+    });
+  };
+  const coverPolaroids = polaroids.map((p, i) => ({
+    ...(window.DIARY_DEFAULTS?.cover?.polaroids?.[i] || {}),
+    ...p,
+  }));
 
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
@@ -134,24 +399,25 @@ function ScrapbookCover() {
       </div>
 
       {/* Hero polaroid cluster (right side) */}
-      <SBPolaroid width={220} slot={polaroids[0]?.slot} caption={polaroids[0]?.caption} captionKr={polaroids[0]?.captionKr}
-        imageUrl={polaroids[0]?.imageUrl}
-        onImageChange={(url) => updatePolaroid(polaroids[0]?.id, { imageUrl: url })}
-        onCaptionChange={(caption) => updatePolaroid(polaroids[0]?.id, { caption })}
-        onCaptionKrChange={(captionKr) => updatePolaroid(polaroids[0]?.id, { captionKr })}
-        top={70} right={70} rotate={-4} zIndex={5} tapeColor="blue" />
-      <SBPolaroid width={170} slot={polaroids[1]?.slot} caption={polaroids[1]?.caption} captionKr={polaroids[1]?.captionKr}
-        imageUrl={polaroids[1]?.imageUrl}
-        onImageChange={(url) => updatePolaroid(polaroids[1]?.id, { imageUrl: url })}
-        onCaptionChange={(caption) => updatePolaroid(polaroids[1]?.id, { caption })}
-        onCaptionKrChange={(captionKr) => updatePolaroid(polaroids[1]?.id, { captionKr })}
-        top={250} right={250} rotate={5} zIndex={4} tapeColor="yellow" />
-      <SBPolaroid width={150} slot={polaroids[2]?.slot} caption={polaroids[2]?.caption} captionKr={polaroids[2]?.captionKr}
-        imageUrl={polaroids[2]?.imageUrl}
-        onImageChange={(url) => updatePolaroid(polaroids[2]?.id, { imageUrl: url })}
-        onCaptionChange={(caption) => updatePolaroid(polaroids[2]?.id, { caption })}
-        onCaptionKrChange={(captionKr) => updatePolaroid(polaroids[2]?.id, { captionKr })}
-        top={340} right={110} rotate={-7} zIndex={6} tapeColor="red" />
+      {coverPolaroids.map((p) => (
+        <SBPolaroid key={p.id}
+          width={p.width}
+          slot={p.slot}
+          caption={p.caption}
+          captionKr={p.captionKr}
+          imageUrl={p.imageUrl}
+          top={p.top}
+          left={p.left}
+          rotate={p.rot}
+          zIndex={p.zIndex}
+          tapeColor={p.tape}
+          movable
+          onMove={(pos) => updatePolaroid(p.id, { left: Math.round(pos.left), top: Math.round(pos.top) })}
+          onImageChange={(url) => updatePolaroid(p.id, { imageUrl: url })}
+          onCaptionChange={(caption) => updatePolaroid(p.id, { caption })}
+          onCaptionKrChange={(captionKr) => updatePolaroid(p.id, { captionKr })}
+        />
+      ))}
 
       {/* TOC — taped strip down the left */}
       <div style={{ position: 'absolute', left: 64, top: 320, width: 280, zIndex: 3 }}>
@@ -229,15 +495,17 @@ function ScrapbookCover() {
           NO.<br/><span style={{ fontSize: 22 }}>01</span>
       </div>
 
-      <SBPostit top={620} left={420} rotate={-4} width={180}>
-        <SBEditableText
-          tag="div"
-          value={cover.postit}
-          onChange={(v) => updateCover('postit', v)}
-          multiline
-          style={{ whiteSpace: 'pre-line' }}
+      {notes.map((note) => (
+        <SBMovableNote
+          key={note.id}
+          note={note}
+          onPatch={(patch) => updateNote(note.id, patch)}
+          onDelete={() => removeNote(note.id)}
         />
-      </SBPostit>
+      ))}
+      <div style={{ position: 'absolute', bottom: 34, left: 470, zIndex: 20 }}>
+        {window.AddButton && <window.AddButton onClick={addNote} label="+ ADD NOTE" />}
+      </div>
     </div>
   );
 }
@@ -485,4 +753,5 @@ function ScrapbookFood() {
 }
 
 Object.assign(window, { ScrapbookCover, ScrapbookPhotos, ScrapbookFood,
-                        SBPolaroid, SBTape, SBPostit, SBEditableText, SBEditableImage });
+                        SBPolaroid, SBTape, SBPostit, SBEditableText, SBEditableImage,
+                        useSBDragPosition, SBMovableNote, ScrapbookElements });

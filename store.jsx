@@ -16,11 +16,15 @@ const DIARY_DEFAULTS = {
     dateRange: 'FEB — JUN · 2026',
     postit: '"you bring vegemite,\ni bring 김치"\n— rule of the share house',
     polaroids: [
-      { id: 'c1', slot: 'three of us · brunswick', caption: 'us three', captionKr: '우리 셋', imageUrl: null },
-      { id: 'c2', slot: 'lygon st · gelato', caption: 'gelato run', captionKr: '', imageUrl: null },
-      { id: 'c3', slot: 'tram 96 · 11pm', caption: 'last tram home', captionKr: '마지막 트램', imageUrl: null },
+      { id: 'c1', slot: 'three of us · brunswick', caption: 'us three', captionKr: '우리 셋', imageUrl: null, top: 70, left: 880, width: 220, rot: -4, tape: 'blue', zIndex: 5 },
+      { id: 'c2', slot: 'lygon st · gelato', caption: 'gelato run', captionKr: '', imageUrl: null, top: 250, left: 780, width: 170, rot: 5, tape: 'yellow', zIndex: 4 },
+      { id: 'c3', slot: 'tram 96 · 11pm', caption: 'last tram home', captionKr: '마지막 트램', imageUrl: null, top: 340, left: 910, width: 150, rot: -7, tape: 'red', zIndex: 6 },
+    ],
+    notes: [
+      { id: 'cn1', text: '"you bring vegemite,\ni bring 김치"\n— rule of the share house', top: 620, left: 420, width: 180, rot: -4, bg: '#fef4a8' },
     ],
   },
+  scrapbookElements: [],
   pageHeaders: {
     '02': { en: 'the photo wall', kr: '사진', subKr: '드래그해서 옮겨봐', subEn: 'drag any photo, anywhere' },
     '04': { en: 'our melbourne map', kr: '지도', subKr: '', subEn: '' },
@@ -102,6 +106,10 @@ const DIARY_DEFAULTS = {
     title: 'melbourne',
     subtitle: '우리 셋의 32곡',
     note: '“press play.\nthen dance, even if you’re alone.”\n— 규보, on the share house fridge',
+  },
+  player: {
+    currentTrackId: 's1',
+    playing: false,
   },
   letters: [
     {

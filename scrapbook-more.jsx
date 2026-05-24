@@ -493,16 +493,24 @@ function ScrapbookTimeline() {
 // ═══════════════════════════════════════════════════════════════
 function ScrapbookPlaylist() {
   const store = window.useStore?.();
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
   const tracks = store?.content?.playlist || window.DIARY_DEFAULTS?.playlist || [];
   const cover = store?.content?.playlistCover || window.DIARY_DEFAULTS?.playlistCover || {};
+  const player = store?.content?.player || window.DIARY_DEFAULTS?.player || {};
   const patch = (id, p) => store?.updateItem?.('playlist', id, p);
   const remove = (id) => store?.removeItem?.('playlist', id);
   const add = () => {
     const n = String(tracks.length + 1).padStart(2, '0');
-    store?.addItem?.('playlist', { id: 's' + Date.now(), n, t: 'new song', a: 'artist', who: 'W', note: 'memory' });
+    const song = { id: 's' + Date.now(), n, t: 'new song', a: 'artist', who: 'W', note: 'memory', url: '' };
+    store?.addItem?.('playlist', song);
+    store?.update?.('player.currentTrackId', song.id);
   };
-  const [playing, setPlaying] = React.useState(false);
-  const [now, setNow] = React.useState(0);
+  const setCurrent = (track, play = false) => {
+    if (!track?.id) return;
+    store?.update?.('player.currentTrackId', track.id);
+    if (play) store?.update?.('player.playing', true);
+  };
+  const now = Math.max(0, tracks.findIndex(t => t.id === player.currentTrackId));
   const nowTrack = tracks[now] || tracks[0] || {};
 
   return (
@@ -532,23 +540,23 @@ function ScrapbookPlaylist() {
 
         {/* Reels */}
         <div style={{ display: 'flex', gap: 50, marginTop: 26, alignItems: 'center', justifyContent: 'center' }}>
-          <div className={playing ? 'cassette-spool' : 'cassette-spool'}
-            style={{ width: 64, height: 64, animation: playing ? 'spin 3s linear infinite' : 'none' }} />
+          <div className={player.playing ? 'cassette-spool' : 'cassette-spool'}
+            style={{ width: 64, height: 64, animation: player.playing ? 'spin 3s linear infinite' : 'none' }} />
           <div style={{ flex: 1, height: 6, background: '#d44a35', borderRadius: 3, position: 'relative' }}>
             <div style={{ width: `${tracks.length ? (now / tracks.length) * 100 : 0}%`, height: '100%', background: '#fbd9c9', borderRadius: 3, transition: 'width .3s' }} />
           </div>
-          <div className={playing ? 'cassette-spool' : 'cassette-spool'}
-            style={{ width: 64, height: 64, animation: playing ? 'spin 3s linear infinite reverse' : 'none' }} />
+          <div className={player.playing ? 'cassette-spool' : 'cassette-spool'}
+            style={{ width: 64, height: 64, animation: player.playing ? 'spin 3s linear infinite reverse' : 'none' }} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
-          <button onClick={() => setPlaying(p => !p)} style={{
+          <button onClick={() => store?.update?.('player.playing', !player.playing)} style={{
             background: '#d44a35', color: '#f3e8cf', border: 'none',
             padding: '8px 18px', fontFamily: 'IBM Plex Mono', fontSize: 11, letterSpacing: '.16em',
             cursor: 'pointer', borderRadius: 3
-          }}>{playing ? '❚❚  PAUSE' : '▶  PLAY'}</button>
+          }}>{player.playing ? '❚❚  PAUSE' : '▶  PLAY'}</button>
           <div className="sb-mono" style={{ fontSize: 10, opacity: .7 }}>
-            {nowTrack.t} — {nowTrack.a}
+            {nowTrack.t} — {nowTrack.a}{nowTrack.url ? ' · audio linked' : ''}
           </div>
         </div>
       </div>
@@ -577,11 +585,12 @@ function ScrapbookPlaylist() {
             const isNow = i === now;
             return (
               <li key={tr.id || tr.n}
-                onClick={() => setNow(i)}
+                onClick={() => setCurrent(tr)}
+                onDoubleClick={() => setCurrent(tr, true)}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '28px 1fr 130px 42px 1fr 24px',
-                  alignItems: 'baseline', gap: 10,
+                  alignItems: 'start', gap: 10,
                   padding: '5px 6px',
                   borderBottom: '0.5px dotted rgba(0,0,0,.2)',
                   background: isNow ? 'rgba(212,74,53,.1)' : 'transparent',
@@ -610,13 +619,25 @@ function ScrapbookPlaylist() {
                 }}>
                   <SBEditableText tag="span" value={tr.who} onChange={(v) => patch(tr.id, { who: v })} />
                 </span>
-                <SBEditableText
-                  tag="span"
-                  className="sb-hand"
-                  value={tr.note}
-                  onChange={(v) => patch(tr.id, { note: v })}
-                  style={{ fontSize: 15, color: '#7a4a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                />
+                <div style={{ minWidth: 0 }}>
+                  <SBEditableText
+                    tag="div"
+                    className="sb-hand"
+                    value={tr.note}
+                    onChange={(v) => patch(tr.id, { note: v })}
+                    style={{ fontSize: 15, color: '#7a4a2a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  />
+                  {(editing || tr.url) && (
+                    <SBEditableText
+                      tag="div"
+                      className="sb-mono"
+                      value={tr.url || ''}
+                      placeholder="direct audio URL"
+                      onChange={(v) => patch(tr.id, { url: v.trim() })}
+                      style={{ fontSize: 8, color: '#213e6c', letterSpacing: '.08em', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    />
+                  )}
+                </div>
                 {window.DeleteButton && tr.id && (
                   <window.DeleteButton onClick={() => remove(tr.id)} style={{ width: 18, height: 18, fontSize: 10 }} />
                 )}
