@@ -55,8 +55,35 @@ alter publication supabase_realtime add table public.diary_state;
 2. Name it **`diary-photos`**. Toggle **Public bucket** ON
    (photos load via plain `<img>`, no auth juggling).
 3. Create the bucket.
-4. Click into the bucket → **Policies** → **New policy** → use the
-   "Authenticated users can upload" template. Save.
+4. Open **SQL Editor** and run this Storage policy block:
+
+```sql
+drop policy if exists "diary_photos_public_read" on storage.objects;
+drop policy if exists "diary_photos_upload" on storage.objects;
+drop policy if exists "diary_photos_update" on storage.objects;
+drop policy if exists "diary_photos_delete" on storage.objects;
+
+create policy "diary_photos_public_read"
+on storage.objects for select
+to public
+using (bucket_id = 'diary-photos');
+
+create policy "diary_photos_upload"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'diary-photos');
+
+create policy "diary_photos_update"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'diary-photos')
+with check (bucket_id = 'diary-photos');
+
+create policy "diary_photos_delete"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'diary-photos');
+```
 
 That's it for storage — uploads now go to this bucket, public reads
 work for everyone.

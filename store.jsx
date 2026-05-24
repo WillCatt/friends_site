@@ -235,8 +235,18 @@ async function uploadImage(file) {
   const { data, error } = await sb.storage.from(bucket).upload(key, file);
   if (error) {
     const msg = `${error.message || error}`.toLowerCase();
-    if (msg.includes('bucket') || msg.includes('not found') || error.statusCode === '404') {
-      console.warn(`Supabase bucket "${bucket}" is missing. Saving a compressed in-diary image instead.`, error);
+    const canFallback =
+      msg.includes('bucket') ||
+      msg.includes('not found') ||
+      msg.includes('row-level security') ||
+      msg.includes('policy') ||
+      msg.includes('permission') ||
+      msg.includes('forbidden') ||
+      msg.includes('unauthorized') ||
+      ['401', '403', '404'].includes(String(error.statusCode || error.status || ''));
+
+    if (canFallback) {
+      console.warn(`Supabase Storage upload failed for bucket "${bucket}". Saving a compressed in-diary image instead.`, error);
       return fileToDataUrl(file);
     }
     throw error;
