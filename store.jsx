@@ -242,22 +242,11 @@ async function uploadImage(file) {
   const key = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const { data, error } = await sb.storage.from(bucket).upload(key, file);
   if (error) {
-    const msg = `${error.message || error}`.toLowerCase();
-    const canFallback =
-      msg.includes('bucket') ||
-      msg.includes('not found') ||
-      msg.includes('row-level security') ||
-      msg.includes('policy') ||
-      msg.includes('permission') ||
-      msg.includes('forbidden') ||
-      msg.includes('unauthorized') ||
-      ['401', '403', '404'].includes(String(error.statusCode || error.status || ''));
-
-    if (canFallback) {
-      console.warn(`Supabase Storage upload failed for bucket "${bucket}". Saving a compressed in-diary image instead.`, error);
-      return fileToDataUrl(file);
-    }
-    throw error;
+    console.error(`Supabase Storage upload failed for bucket "${bucket}".`, error);
+    throw new Error(
+      `Cloud photo upload failed for bucket "${bucket}": ${error.message || error}. ` +
+      'Check the bucket exists, is public, and has authenticated insert/update policies.'
+    );
   }
   const { data: pub } = sb.storage.from(bucket).getPublicUrl(data.path);
   return pub.publicUrl;
@@ -287,22 +276,36 @@ function StoreProvider({ children }) {
       return;
     }
 
-    (async () => {
+    const loadCloudContent = async () => {
+      setSynced('syncing');
       const { data, error } = await sb.from('diary_state').select('content').eq('id', 1).maybeSingle();
       if (error) { console.error(error); setSynced('error'); return; }
       if (data?.content && Object.keys(data.content).length) {
         setContent(mergeDefaults(DIARY_DEFAULTS, data.content));
       } else {
-        await sb.from('diary_state').upsert({ id: 1, content: DIARY_DEFAULTS });
+        const { error: seedError } = await sb.from('diary_state').upsert({ id: 1, content: DIARY_DEFAULTS });
+        if (seedError) { console.error(seedError); setSynced('error'); return; }
       }
       setSynced('cloud');
-    })();
+    };
+
+    loadCloudContent();
 
     const chan = sb.channel('diary-state')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'diary_state' },
         (payload) => { if (payload.new?.content) setContent(mergeDefaults(DIARY_DEFAULTS, payload.new.content)); })
       .subscribe();
-    return () => sb.removeChannel(chan);
+
+    const { data: authSub } = sb.auth.onAuthStateChange((event, session) => {
+      if (session && ['SIGNED_IN', 'TOKEN_REFRESHED', 'INITIAL_SESSION'].includes(event)) {
+        loadCloudContent();
+      }
+    });
+
+    return () => {
+      sb.removeChannel(chan);
+      authSub?.subscription?.unsubscribe();
+    };
   }, []);
 
   // ─── Update fn — local-first, then debounced cloud push

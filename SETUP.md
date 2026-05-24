@@ -36,13 +36,16 @@ create table public.diary_state (
 insert into public.diary_state (id, content) values (1, '{}'::jsonb)
 on conflict (id) do nothing;
 
--- Lock it down: only signed-in users can read / write.
+-- Lock it down: anyone can read the published diary, only signed-in
+-- editors can write.
 alter table public.diary_state enable row level security;
 
 create policy "diary_state_select"  on public.diary_state for select
-  using (auth.role() = 'authenticated');
+  to public
+  using (true);
 
 create policy "diary_state_update"  on public.diary_state for update
+  to authenticated
   using (auth.role() = 'authenticated');
 
 -- Enable real-time on the table so all browsers see changes live.
@@ -206,6 +209,22 @@ sync automatically.
   the user in the dashboard and click "Confirm user".
 - **Photo upload says "Upload failed"**: storage bucket missing or
   policies wrong. Re-check Step 3.
+- **Photos only show on the device that uploaded them**: those photos
+  were saved before Storage was working. Run the Step 3 Storage SQL,
+  then re-upload the affected photos. A real synced photo URL starts
+  with `https://...supabase.co/storage/v1/object/public/diary-photos/`.
+- **Published website shows defaults/local data instead of the shared
+  diary**: make the diary row publicly readable while keeping edits
+  authenticated:
+
+  ```sql
+  drop policy if exists "diary_state_select" on public.diary_state;
+  create policy "diary_state_select"
+  on public.diary_state for select
+  to public
+  using (true);
+  ```
+
 - **Edits don't sync to other browsers**: real-time wasn't enabled on
   the table — re-run the last SQL line from Step 2.
 - **Wipe everything and start over**: in SQL Editor:

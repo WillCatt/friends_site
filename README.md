@@ -81,6 +81,8 @@ up on your screen within a second.
 | Blank white page | You opened the `.html` file directly. Use the static server (above). |
 | "SIGN IN TO EDIT" button is grayed out | No Supabase keys yet — that's expected in solo mode. Click EDIT directly. |
 | Changes don't sync to my friend's browser | Supabase keys not filled in, OR the realtime SQL line wasn't run. See SETUP.md step 2. |
+| Photos only show on one device | Supabase Storage upload is failing, so the browser kept a local copy. Re-run SETUP.md step 3, then re-upload those photos. |
+| Published site shows defaults | Make `diary_state` publicly readable with the policy in SETUP.md troubleshooting. Edits still require sign-in. |
 | I want to start fresh | In Supabase SQL editor: `update public.diary_state set content = '{}'::jsonb where id = 1;` then refresh. |
 | Photo upload fails | Storage bucket missing or not public. Re-do SETUP.md step 3. |
 
