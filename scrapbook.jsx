@@ -58,14 +58,61 @@ function normalizeSBRotation(value) {
 
 function SBRotateControls({ value = 0, onChange, style }) {
   const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const drag = React.useRef(null);
   if (!editing) return null;
-  const set = (delta) => onChange?.(normalizeSBRotation((Number(value) || 0) + delta));
+
+  const getPointerAngle = (e, target) => {
+    const rect = target.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    return Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+  };
+
+  const onPointerDown = (e) => {
+    if (e.button !== 0) return;
+    const target = e.currentTarget.parentElement;
+    if (!target) return;
+    drag.current = {
+      target,
+      pointerAngle: getPointerAngle(e, target),
+      rotation: Number(value) || 0,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.currentTarget.classList.add('rotating');
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const onPointerMove = (e) => {
+    if (!drag.current) return;
+    const delta = normalizeSBRotation(getPointerAngle(e, drag.current.target) - drag.current.pointerAngle);
+    onChange?.(normalizeSBRotation(drag.current.rotation + delta));
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const onPointerUp = (e) => {
+    if (!drag.current) return;
+    drag.current = null;
+    e.currentTarget.classList.remove('rotating');
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   return (
-    <div className="sb-object-tools" style={style} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-      <button type="button" className="sb-tool-btn" title="Rotate left" onClick={() => set(-5)}>↺</button>
-      <button type="button" className="sb-tool-btn" title="Reset rotation" onClick={() => onChange?.(0)}>0</button>
-      <button type="button" className="sb-tool-btn" title="Rotate right" onClick={() => set(5)}>↻</button>
-    </div>
+    <button
+      type="button"
+      className="sb-rotate-handle"
+      title="Drag to rotate. Double-click to reset."
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onDoubleClick={(e) => { e.stopPropagation(); onChange?.(0); }}
+      onClick={(e) => e.stopPropagation()}
+      style={style}
+    >↻</button>
   );
 }
 

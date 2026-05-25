@@ -172,30 +172,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Inter Tight", system-ui,
 .lift { transition: transform .25s cubic-bezier(.2,.7,.3,1), box-shadow .25s; }
 .lift:hover { transform: translateY(-3px) rotate(var(--hover-rot, 0deg)); }
 
-.sb-object-tools {
+.sb-rotate-handle {
   position: absolute;
-  top: -16px;
-  left: -10px;
+  top: -14px;
+  left: -14px;
   z-index: 70;
-  display: flex;
-  gap: 3px;
-  align-items: center;
+  display: grid;
+  place-items: center;
   pointer-events: auto;
-}
-.sb-tool-btn {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border: 1.5px solid #1c1612;
+  border-radius: 50%;
   background: #f3e8cf;
   color: #1c1612;
   box-shadow: 2px 2px 0 #1c1612;
   font-family: "IBM Plex Mono", monospace;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1;
   padding: 0;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
-.sb-tool-btn:hover { background: #fef4a8; }
+.sb-rotate-handle:hover { background: #fef4a8; }
+.sb-rotate-handle.rotating { cursor: grabbing; background: #fbd9c9; }
 .sb-color-picker {
   width: 24px;
   height: 24px;
@@ -442,3 +443,358 @@ html.diary-mode, .diary-mode body { background: #ebdcb8; }
 /* Show "DROP IMAGE" hint when hovering image slots in edit mode */
 .editing [class*="polaroid"]:hover .edit-hint,
 .editing .lift:hover .edit-hint { opacity: 1 !important; }
+
+/* ─────────────────────────────────────────────
+   MOBILE READER
+   ───────────────────────────────────────────── */
+.mobile-diary { display: none; }
+
+@media (max-width: 760px) {
+  html.diary-mode,
+  .diary-mode body {
+    background: #ebdcb8;
+    min-height: 100%;
+  }
+  .diary-mode body {
+    scroll-snap-type: none;
+    overflow-x: hidden;
+  }
+  .desktop-diary { display: none; }
+  .mobile-diary {
+    display: block;
+    min-height: 100vh;
+    padding: 0 0 104px;
+    color: #1c1612;
+    background:
+      linear-gradient(90deg, rgba(28,22,18,.06) 1px, transparent 1px) 0 0/24px 24px,
+      #ebdcb8;
+  }
+  .mobile-hero,
+  .mobile-section {
+    padding: 26px 18px;
+    border-bottom: 1.5px solid rgba(28,22,18,.18);
+  }
+  .mobile-hero {
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+  }
+  .mobile-hero-kicker,
+  .mobile-section-kicker,
+  .mobile-date {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: .18em;
+    color: #7a6648;
+    text-transform: uppercase;
+  }
+  .mobile-hero h1 {
+    margin: 0;
+    font-family: "Caveat", cursive;
+    font-size: clamp(58px, 19vw, 88px);
+    line-height: .82;
+    font-weight: 700;
+    color: #1c1612;
+  }
+  .mobile-hero h1 span { color: #d44a35; }
+  .mobile-hero p {
+    margin: 0;
+    font-family: "Caveat", cursive;
+    font-size: 25px;
+    line-height: 1;
+    color: #1c1612;
+  }
+  .mobile-hero .mobile-kr {
+    font-family: "Gaegu", cursive;
+    color: #213e6c;
+  }
+  .mobile-cover-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 22px;
+  }
+  .mobile-nav {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 12px;
+    background: rgba(243,232,207,.96);
+    border-top: 1.5px solid #1c1612;
+    border-bottom: 1.5px solid #1c1612;
+    box-shadow: 0 4px 12px rgba(40,20,5,.12);
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-nav a {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    background: #1c1612;
+    color: #f3e8cf;
+    text-decoration: none;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: .12em;
+  }
+  .mobile-section h2 {
+    margin: 2px 0 18px;
+    font-family: "Caveat", cursive;
+    font-size: 48px;
+    line-height: .9;
+    color: #1c1612;
+  }
+  .mobile-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 12px;
+    align-items: start;
+  }
+  .mobile-polaroid {
+    margin: 0;
+    padding: 8px 8px 11px;
+    background: #fffaf0;
+    box-shadow: 0 8px 18px rgba(40,20,5,.18), 2px 2px 0 rgba(28,22,18,.18);
+    transform: rotate(var(--rot, 0deg));
+  }
+  .mobile-polaroid img,
+  .mobile-photo-empty {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: block;
+    object-fit: cover;
+    background: #e7d8b8;
+  }
+  .mobile-photo-empty {
+    position: relative;
+    border: 1px dashed rgba(28,22,18,.3);
+  }
+  .mobile-photo-empty::after {
+    content: attr(data-slot);
+    position: absolute;
+    inset: 10px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9px;
+    letter-spacing: .1em;
+    color: #7a6648;
+  }
+  .mobile-polaroid figcaption {
+    margin-top: 7px;
+    text-align: center;
+    font-family: "Caveat", cursive;
+    font-size: 19px;
+    line-height: 1;
+  }
+  .mobile-polaroid figcaption small {
+    display: block;
+    margin-top: 3px;
+    font-family: "Gaegu", cursive;
+    font-size: 14px;
+    color: #213e6c;
+  }
+  .mobile-card-list,
+  .mobile-letter-list,
+  .mobile-track-list,
+  .mobile-guestbook {
+    display: grid;
+    gap: 12px;
+  }
+  .mobile-food-card {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 12px;
+    padding: 12px;
+    background: #fbf6e9;
+    box-shadow: 3px 3px 0 #1c1612;
+    border: 1.5px solid #1c1612;
+  }
+  .mobile-food-card img,
+  .mobile-food-empty {
+    width: 92px;
+    height: 92px;
+    object-fit: cover;
+    background: #e7d8b8;
+  }
+  .mobile-food-card h3,
+  .mobile-timeline h3,
+  .mobile-letter-list h3 {
+    margin: 0;
+    font-family: "Caveat", cursive;
+    font-size: 29px;
+    line-height: 1;
+  }
+  .mobile-food-card h3 span {
+    font-family: "Gaegu", cursive;
+    font-size: 20px;
+    color: #213e6c;
+  }
+  .mobile-food-card p,
+  .mobile-food-card small,
+  .mobile-map-list span,
+  .mobile-timeline p,
+  .mobile-timeline small,
+  .mobile-letter-list p,
+  .mobile-letter-list footer,
+  .mobile-guestbook small,
+  .mobile-track-list small {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .mobile-food-card p {
+    margin: 4px 0 0;
+    color: #7a4a2a;
+  }
+  .mobile-food-card small { color: #544a3a; }
+  .mobile-map-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+  }
+  .mobile-map-list li {
+    padding: 11px 12px;
+    background: rgba(251,246,233,.72);
+    border-left: 4px solid #d44a35;
+  }
+  .mobile-map-list strong {
+    display: block;
+    font-family: "Caveat", cursive;
+    font-size: 25px;
+    line-height: 1;
+  }
+  .mobile-map-list span { color: #544a3a; }
+  .mobile-timeline {
+    display: grid;
+    gap: 12px;
+  }
+  .mobile-timeline article,
+  .mobile-letter-list article {
+    padding: 16px;
+    background: #fbf6e9;
+    border: 1.5px solid #d44a35;
+    box-shadow: 3px 3px 0 rgba(28,22,18,.28);
+  }
+  .mobile-timeline article > div {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    letter-spacing: .16em;
+    color: #7a6648;
+  }
+  .mobile-track-list button {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 3px 10px;
+    text-align: left;
+    padding: 11px 12px;
+    border: 1.5px solid #1c1612;
+    background: #fbf6e9;
+    color: #1c1612;
+    box-shadow: 3px 3px 0 rgba(28,22,18,.22);
+  }
+  .mobile-track-list button.active {
+    background: #1c1612;
+    color: #f3e8cf;
+  }
+  .mobile-track-list span,
+  .mobile-track-list em,
+  .mobile-track-list small {
+    font-family: "IBM Plex Mono", monospace;
+    font-style: normal;
+  }
+  .mobile-track-list strong {
+    font-family: "Caveat", cursive;
+    font-size: 23px;
+    line-height: 1;
+  }
+  .mobile-track-list em,
+  .mobile-track-list small { grid-column: 2; opacity: .75; }
+  .mobile-note-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mobile-note-grid article {
+    padding: 16px;
+    box-shadow: 0 8px 16px rgba(40,20,5,.14), 2px 2px 0 rgba(28,22,18,.18);
+    transform: rotate(var(--rot, 0deg));
+  }
+  .mobile-note-grid p,
+  .mobile-guestbook p {
+    margin: 0;
+    font-family: "Caveat", cursive;
+    font-size: 25px;
+    line-height: 1.05;
+  }
+  .mobile-note-grid small,
+  .mobile-guestbook small {
+    display: block;
+    margin-top: 8px;
+  }
+  .mobile-letter-list article {
+    background-image: repeating-linear-gradient(180deg, transparent 0 29px, rgba(0,0,0,.06) 29px 30px);
+  }
+  .mobile-letter-list small {
+    display: block;
+    margin-bottom: 12px;
+    font-family: "IBM Plex Mono", monospace;
+    color: #7a4a2a;
+  }
+  .mobile-letter-list footer {
+    margin-top: 12px;
+    color: #7a4a2a;
+  }
+  .mobile-guestbook article {
+    padding: 12px 0;
+    border-bottom: 1px dotted rgba(28,22,18,.28);
+  }
+  .mobile-player {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: 58px 1fr 48px 48px;
+    gap: 8px;
+    align-items: center;
+    padding: 10px;
+    background: #1c1612;
+    color: #f3e8cf;
+    border-radius: 6px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.35), 3px 3px 0 #d44a35;
+  }
+  .mobile-player button {
+    border: 1px solid rgba(243,232,207,.45);
+    background: transparent;
+    color: inherit;
+    padding: 7px 5px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 8px;
+    letter-spacing: .1em;
+  }
+  .mobile-player strong,
+  .mobile-player span {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .mobile-player strong {
+    font-family: "Caveat", cursive;
+    font-size: 21px;
+    line-height: 1;
+  }
+  .mobile-player span {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9px;
+    opacity: .7;
+  }
+}
