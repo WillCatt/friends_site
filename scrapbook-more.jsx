@@ -380,6 +380,8 @@ function ScrapbookTimeline() {
   const months = store?.content?.timelineMonths || window.DIARY_DEFAULTS?.timelineMonths || [];
   const stamps = store?.content?.timelineStamps || window.DIARY_DEFAULTS?.timelineStamps || {};
   const note = store?.content?.timelineNote || window.DIARY_DEFAULTS?.timelineNote || '';
+  const [active, setActive] = React.useState(0);
+  const scrollerRef = React.useRef(null);
   const patch = (id, p) => store?.updateItem?.('timelineMonths', id, p);
   const add = () => store?.addItem?.('timelineMonths', {
     id: 't' + Date.now(),
@@ -393,73 +395,146 @@ function ScrapbookTimeline() {
     tape: 'red',
     imageUrl: null,
   });
+  const activeMonth = months[Math.min(active, Math.max(months.length - 1, 0))] || {};
+
+  React.useEffect(() => {
+    if (active > months.length - 1) setActive(Math.max(months.length - 1, 0));
+  }, [active, months.length]);
+
+  const scrollToMonth = (idx) => {
+    const next = Math.max(0, Math.min(idx, months.length - 1));
+    const target = scrollerRef.current?.querySelector(`[data-month-idx="${next}"]`);
+    target?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    setActive(next);
+  };
+
+  const syncActiveMonth = (e) => {
+    const el = e.currentTarget;
+    const center = el.scrollLeft + el.clientWidth / 2;
+    const pages = Array.from(el.querySelectorAll('[data-month-idx]'));
+    let best = active;
+    let bestDist = Infinity;
+
+    pages.forEach((page) => {
+      const pageCenter = page.offsetLeft + page.offsetWidth / 2;
+      const dist = Math.abs(pageCenter - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = Number(page.dataset.monthIdx) || 0;
+      }
+    });
+
+    if (best !== active) setActive(best);
+  };
 
   return (
     <div className="scrapbook" style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <SBPageHeader no="05" en="months together" kr="시간" subKr="2월부터 6월까지" subEn="five months, from feb to june" />
 
-      {/* horizontal washi tape running across as the "timeline" */}
-      <div className="washi" style={{
-        position: 'absolute', top: 290, left: 60, right: 60, height: 14, opacity: .7
-      }} />
-
-      {/* month cards */}
-      <div style={{ position: 'absolute', top: 200, left: 80, right: 80, display: 'flex',
-                    gap: 18, justifyContent: 'space-between' }}>
-        {months.map((m, i) => (
-          <div key={m.id || m.en} className="lift" style={{
-            width: `calc((100% - ${(Math.max(months.length - 1, 0)) * 18}px) / ${Math.max(months.length, 1)})`,
-            background: m.bg,
-            padding: '18px 16px',
-            boxShadow: '0 8px 16px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.06)',
-            transform: `rotate(${[-1.5, 1.2, -1, 1.5, -1.2][i]}deg)`,
-            position: 'relative',
-            zIndex: 5 - i,
-          }}>
-            <div className={`washi ${m.tape === 'red' ? '' : m.tape}`}
-              style={{ position: 'absolute', top: -10, left: '50%', width: 60, marginLeft: -30, height: 14,
-                       transform: `rotate(${[-3, 4, -2, 5, -3][i]}deg)` }} />
-            <div className="sb-mono" style={{ fontSize: 10, color: m.accent, letterSpacing: '.22em' }}>
-              <SBEditableText tag="span" value={m.en} onChange={(v) => patch(m.id, { en: v })} /> · 2026
-            </div>
-            <SBEditableText
-              tag="div"
-              className="sb-hand-kr"
-              value={m.kr}
-              onChange={(v) => patch(m.id, { kr: v })}
-              placeholder="한글"
-              style={{ fontSize: 30, color: m.accent, lineHeight: 1 }}
-            />
-            <SBEditableText
-              tag="div"
-              className="sb-hand"
-              value={m.big}
-              onChange={(v) => patch(m.id, { big: v })}
-              style={{ fontSize: 28, color: '#1c1612', lineHeight: 1, marginTop: 6 }}
-            />
-            <SBEditableImage
-              src={m.imageUrl}
-              slot={m.pol}
-              onChange={(url) => patch(m.id, { imageUrl: url })}
-              style={{ aspectRatio: '1/1', marginTop: 12 }}
-            />
-            <SBEditableText
-              tag="div"
-              className="sb-mono"
-              value={m.pol}
-              onChange={(v) => patch(m.id, { pol: v })}
-              style={{ fontSize: 8, color: '#7a6648', marginTop: 4, letterSpacing: '.1em' }}
-            />
-            <SBEditableText
-              tag="div"
-              className="sb-hand"
-              value={m.note}
-              onChange={(v) => patch(m.id, { note: v })}
-              multiline
-              style={{ fontSize: 14, color: '#3a2e1c', marginTop: 8, lineHeight: 1.2 }}
-            />
+      <div className="timeline-book" style={{ '--active-accent': activeMonth.accent || '#d44a35' }}>
+        <div className="timeline-book-rail">
+          <button
+            type="button"
+            className="timeline-book-btn"
+            onClick={() => scrollToMonth(active - 1)}
+            disabled={active <= 0 || months.length === 0}
+          >
+            PREV
+          </button>
+          <div className="timeline-month-tabs">
+            {months.map((m, i) => (
+              <button
+                key={m.id || m.en || i}
+                type="button"
+                className={i === active ? 'active' : ''}
+                onClick={() => scrollToMonth(i)}
+              >
+                {m.en || `Month ${i + 1}`}
+              </button>
+            ))}
           </div>
-        ))}
+          <button
+            type="button"
+            className="timeline-book-btn"
+            onClick={() => scrollToMonth(active + 1)}
+            disabled={active >= months.length - 1 || months.length === 0}
+          >
+            NEXT
+          </button>
+          {window.AddButton && <window.AddButton onClick={add} label="+ ADD MONTH" />}
+        </div>
+
+        <div className="timeline-book-scroll" ref={scrollerRef} onScroll={syncActiveMonth}>
+          {months.map((m, i) => (
+            <article
+              key={m.id || m.en || i}
+              data-month-idx={i}
+              className={`timeline-page-shell${i === active ? ' is-active' : i < active ? ' before' : ' after'}`}
+            >
+              <div className="timeline-month-page" style={{ '--month-bg': m.bg || '#fdf3df', '--month-accent': m.accent || '#d44a35' }}>
+                <div className={`washi ${m.tape === 'red' ? '' : m.tape}`}
+                  style={{
+                    position: 'absolute',
+                    top: 18,
+                    left: 58,
+                    width: 126,
+                    height: 18,
+                    transform: `rotate(${[-3, 4, -2, 5, -3][i % 5]}deg)`,
+                  }} />
+                <div className="timeline-page-number">
+                  {String(i + 1).padStart(2, '0')} / {String(months.length).padStart(2, '0')}
+                </div>
+
+                <div className="timeline-page-grid">
+                  <div className="timeline-page-copy">
+                    <div className="timeline-page-kicker">
+                      <SBEditableText tag="span" value={m.en} onChange={(v) => patch(m.id, { en: v })} /> · 2026
+                    </div>
+                    <SBEditableText
+                      tag="div"
+                      className="sb-hand-kr"
+                      value={m.kr}
+                      onChange={(v) => patch(m.id, { kr: v })}
+                      placeholder="한글"
+                      style={{ fontSize: 58, color: 'var(--month-accent)', lineHeight: .88, marginTop: 18 }}
+                    />
+                    <SBEditableText
+                      tag="div"
+                      className="sb-hand"
+                      value={m.big}
+                      onChange={(v) => patch(m.id, { big: v })}
+                      style={{ fontSize: 76, color: '#1c1612', lineHeight: .82, marginTop: 8 }}
+                    />
+                    <SBEditableText
+                      tag="div"
+                      className="sb-hand"
+                      value={m.note}
+                      onChange={(v) => patch(m.id, { note: v })}
+                      multiline
+                      style={{ fontSize: 28, color: '#3a2e1c', marginTop: 22, lineHeight: 1.05, whiteSpace: 'pre-line' }}
+                    />
+                  </div>
+
+                  <div className="timeline-page-photo">
+                    <SBEditableImage
+                      src={m.imageUrl}
+                      slot={m.pol}
+                      onChange={(url) => patch(m.id, { imageUrl: url })}
+                      style={{ aspectRatio: '1/1' }}
+                    />
+                    <SBEditableText
+                      tag="div"
+                      className="sb-mono"
+                      value={m.pol}
+                      onChange={(v) => patch(m.id, { pol: v })}
+                      style={{ fontSize: 10, color: '#7a6648', marginTop: 10, letterSpacing: '.14em', textAlign: 'center' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
 
       {/* Bottom rule + arrival/departure stamps */}
@@ -479,7 +554,7 @@ function ScrapbookTimeline() {
         </div>
       </div>
 
-      <SBPostit bottom={36} right={80} rotate={4} width={190} bg="#fbd9c9">
+      <SBPostit bottom={36} right={520} rotate={4} width={190} bg="#fbd9c9">
         <SBEditableText
           tag="div"
           value={note}
@@ -488,9 +563,6 @@ function ScrapbookTimeline() {
           style={{ whiteSpace: 'pre-line' }}
         />
       </SBPostit>
-      <div style={{ position: 'absolute', bottom: 36, right: 300 }}>
-        {window.AddButton && <window.AddButton onClick={add} label="+ ADD MONTH" />}
-      </div>
     </div>
   );
 }

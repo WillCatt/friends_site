@@ -359,6 +359,220 @@ html.diary-mode, .diary-mode body { background: #ebdcb8; }
 .diary-mode .cover-no-sticker { display: none; }
 
 /* ─────────────────────────────────────────────
+   TIMELINE BOOK — page scroller for month memories
+   ───────────────────────────────────────────── */
+.timeline-book {
+  position: absolute;
+  top: 146px;
+  left: 60px;
+  right: 60px;
+  bottom: 102px;
+  perspective: 1600px;
+  --active-accent: #d44a35;
+}
+.timeline-book,
+.timeline-book *,
+.timeline-book *::before,
+.timeline-book *::after {
+  box-sizing: border-box;
+}
+.timeline-book::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 72px;
+  bottom: 28px;
+  width: 34px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg,
+    rgba(28,22,18,.16),
+    rgba(255,255,255,.2) 48%,
+    rgba(28,22,18,.13)
+  );
+  filter: blur(7px);
+  opacity: .65;
+  pointer-events: none;
+  z-index: 0;
+}
+.timeline-book-rail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.timeline-book-btn,
+.timeline-month-tabs button {
+  border: 1.5px solid #1c1612;
+  background: rgba(243,232,207,.9);
+  color: #1c1612;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .16em;
+  line-height: 1;
+  padding: 10px 12px;
+  box-shadow: 3px 3px 0 #1c1612;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.timeline-book-btn:hover:not(:disabled),
+.timeline-month-tabs button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #1c1612;
+}
+.timeline-book-btn:disabled {
+  opacity: .38;
+  cursor: default;
+}
+.timeline-month-tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 0 3px 5px;
+  scrollbar-width: none;
+}
+.timeline-month-tabs::-webkit-scrollbar { display: none; }
+.timeline-month-tabs button.active {
+  background: var(--active-accent);
+  color: #f3e8cf;
+}
+.timeline-month-tabs button {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-book-scroll {
+  position: absolute;
+  inset: 42px 0 0;
+  z-index: 1;
+  display: flex;
+  gap: 42px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 24px 220px 34px;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 220px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.timeline-book-scroll::-webkit-scrollbar { display: none; }
+.timeline-page-shell {
+  flex: 0 0 760px;
+  max-width: calc(100% - 180px);
+  height: 100%;
+  scroll-snap-align: center;
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+.timeline-month-page {
+  position: relative;
+  height: calc(100% - 8px);
+  min-height: 420px;
+  padding: 44px 48px 40px;
+  overflow: hidden;
+  background: var(--month-bg);
+  border: 1.5px solid rgba(28,22,18,.42);
+  box-shadow:
+    0 18px 36px rgba(45,28,9,.18),
+    0 2px 4px rgba(45,28,9,.1),
+    inset 18px 0 24px rgba(28,22,18,.08);
+  transform-origin: left center;
+  transform: rotateY(8deg) translateX(10px) scale(.96);
+  transition: transform .35s cubic-bezier(.2,.7,.3,1), box-shadow .35s, filter .35s;
+}
+.timeline-page-shell.before .timeline-month-page {
+  transform: rotateY(-10deg) translateX(-12px) scale(.94);
+  filter: saturate(.92) brightness(.97);
+}
+.timeline-page-shell.is-active .timeline-month-page {
+  transform: rotateY(0deg) translateZ(32px) scale(1);
+  box-shadow:
+    0 28px 48px rgba(45,28,9,.24),
+    0 4px 8px rgba(45,28,9,.12),
+    inset 18px 0 24px rgba(28,22,18,.08);
+  filter: none;
+}
+.timeline-month-page::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 82px;
+  background: linear-gradient(90deg, rgba(28,22,18,.16), rgba(28,22,18,0));
+  pointer-events: none;
+}
+.timeline-month-page::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 96px;
+  height: 96px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.75), rgba(255,255,255,.15) 54%, rgba(28,22,18,.18) 55%, rgba(28,22,18,0) 72%),
+    linear-gradient(135deg, transparent 0 50%, rgba(28,22,18,.12) 51% 52%, transparent 53%);
+  border-bottom-left-radius: 52px;
+  pointer-events: none;
+}
+.timeline-page-number {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  z-index: 2;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: rgba(28,22,18,.55);
+}
+.timeline-page-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.05fr .9fr;
+  align-items: center;
+  gap: 42px;
+  height: 100%;
+}
+.timeline-page-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.timeline-page-kicker {
+  color: var(--month-accent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+.timeline-page-photo {
+  position: relative;
+  padding: 12px 12px 26px;
+  background: #fffaf0;
+  box-shadow:
+    0 12px 22px rgba(28,22,18,.18),
+    0 1px 2px rgba(28,22,18,.1);
+  transform: rotate(2deg);
+}
+.timeline-page-photo::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 76px;
+  height: 17px;
+  transform: translateX(-50%) rotate(-4deg);
+  background: rgba(254,244,168,.82);
+  box-shadow: 0 1px 2px rgba(28,22,18,.12);
+}
+.timeline-page-photo > div:first-child {
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────
    EDIT MODE — chrome + editable highlights
    ───────────────────────────────────────────── */
 .edit-chrome {
@@ -442,7 +656,8 @@ html.diary-mode, .diary-mode body { background: #ebdcb8; }
 
 /* Show "DROP IMAGE" hint when hovering image slots in edit mode */
 .editing [class*="polaroid"]:hover .edit-hint,
-.editing .lift:hover .edit-hint { opacity: 1 !important; }
+.editing .lift:hover .edit-hint,
+.editing .timeline-page-photo:hover .edit-hint { opacity: 1 !important; }
 
 /* ─────────────────────────────────────────────
    MOBILE READER
