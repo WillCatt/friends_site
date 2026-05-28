@@ -77,11 +77,61 @@ const DIARY_DEFAULTS = {
   ],
   mapNote: '“next time:\nbrighton at dawn,\nbefore the boxes glow”',
   timelineMonths: [
-    { id: 't1', en: 'Feb', kr: '2월', big: 'we meet', note: '교포 lands at TUL · jeongmin’s already crashing my couch', pol: 'first dinner · 14 feb', bg: '#fdf3df', accent: '#d44a35', tape: 'red', imageUrl: null },
-    { id: 't2', en: 'Mar', kr: '3월', big: 'autumn', note: 'lygon st gelato season ends · we eat it anyway', pol: 'lygon st · 03 mar', bg: '#f6e9d3', accent: '#213e6c', tape: 'blue', imageUrl: null },
-    { id: 't3', en: 'Apr', kr: '4월', big: 'cold snap', note: 'first puffer jackets · 김치 weekend · ngv all afternoon', pol: 'share house · 17 apr', bg: '#f9ecd1', accent: '#6b7a4a', tape: 'yellow', imageUrl: null },
-    { id: 't4', en: 'May', kr: '5월', big: 'routines', note: 'patricia every wednesday · jeongmin learns to make a flat white', pol: 'patricia · 08 may', bg: '#fae6cf', accent: '#d39836', tape: 'red', imageUrl: null },
-    { id: 't5', en: 'Jun', kr: '6월', big: 'last weeks', note: 'box hill bingsu run · final trams · letters left on the fridge', pol: 'st kilda · 21 jun', bg: '#f3e0c1', accent: '#213e6c', tape: 'dots', imageUrl: null },
+    {
+      id: 't1', en: 'Feb', kr: '2월', big: 'we meet', note: '교포 lands at TUL · jeongmin’s already crashing my couch', pol: 'first dinner · 14 feb', bg: '#fdf3df', accent: '#d44a35', tape: 'red', imageUrl: null,
+      photos: [
+        { id: 't1p1', slot: 'first dinner · 14 feb', caption: 'first dinner', imageUrl: null, top: 26, left: 36, width: 158, rot: -5, tape: 'red', x: 0, y: 0 },
+        { id: 't1p2', slot: 'airport couch crash', caption: 'arrivals', imageUrl: null, top: 122, left: 150, width: 122, rot: 6, tape: 'yellow', x: 0, y: 0 },
+      ],
+      days: [
+        { id: 't1d1', day: '14', title: 'first dinner', note: 'first plates on the table, bags still by the door' },
+        { id: 't1d2', day: '18', title: 'share house', note: 'the couch becomes a bedroom and somehow it works' },
+      ],
+    },
+    {
+      id: 't2', en: 'Mar', kr: '3월', big: 'autumn', note: 'lygon st gelato season ends · we eat it anyway', pol: 'lygon st · 03 mar', bg: '#f6e9d3', accent: '#213e6c', tape: 'blue', imageUrl: null,
+      photos: [
+        { id: 't2p1', slot: 'lygon st · 03 mar', caption: 'gelato run', imageUrl: null, top: 34, left: 54, width: 150, rot: 4, tape: 'blue', x: 0, y: 0 },
+        { id: 't2p2', slot: 'tram window', caption: 'late tram', imageUrl: null, top: 124, left: 152, width: 122, rot: -6, tape: 'red', x: 0, y: 0 },
+      ],
+      days: [
+        { id: 't2d1', day: '03', title: 'lygon street', note: 'gelato even though the weather is turning' },
+        { id: 't2d2', day: '21', title: 'night tram', note: 'tram windows, tired feet, everyone talking over each other' },
+      ],
+    },
+    {
+      id: 't3', en: 'Apr', kr: '4월', big: 'cold snap', note: 'first puffer jackets · 김치 weekend · ngv all afternoon', pol: 'share house · 17 apr', bg: '#f9ecd1', accent: '#6b7a4a', tape: 'yellow', imageUrl: null,
+      photos: [
+        { id: 't3p1', slot: 'share house · 17 apr', caption: 'kimchi weekend', imageUrl: null, top: 26, left: 48, width: 154, rot: -3, tape: 'yellow', x: 0, y: 0 },
+        { id: 't3p2', slot: 'ngv afternoon', caption: 'quiet room', imageUrl: null, top: 122, left: 150, width: 122, rot: 5, tape: 'blue', x: 0, y: 0 },
+      ],
+      days: [
+        { id: 't3d1', day: '17', title: 'kimchi weekend', note: 'the whole house smells like garlic and chilli' },
+        { id: 't3d2', day: '25', title: 'ngv afternoon', note: 'cold outside, quiet inside, no one wants to leave' },
+      ],
+    },
+    {
+      id: 't4', en: 'May', kr: '5월', big: 'routines', note: 'patricia every wednesday · jeongmin learns to make a flat white', pol: 'patricia · 08 may', bg: '#fae6cf', accent: '#d39836', tape: 'red', imageUrl: null,
+      photos: [
+        { id: 't4p1', slot: 'patricia · 08 may', caption: 'flat white', imageUrl: null, top: 32, left: 42, width: 150, rot: 5, tape: 'red', x: 0, y: 0 },
+        { id: 't4p2', slot: 'kitchen table', caption: 'routine', imageUrl: null, top: 122, left: 150, width: 122, rot: -4, tape: 'dots', x: 0, y: 0 },
+      ],
+      days: [
+        { id: 't4d1', day: '08', title: 'patricia', note: 'coffee becomes a weekly ritual' },
+        { id: 't4d2', day: '19', title: 'kitchen table', note: 'same seats, same mugs, better jokes' },
+      ],
+    },
+    {
+      id: 't5', en: 'Jun', kr: '6월', big: 'last weeks', note: 'box hill bingsu run · final trams · letters left on the fridge', pol: 'st kilda · 21 jun', bg: '#f3e0c1', accent: '#213e6c', tape: 'dots', imageUrl: null,
+      photos: [
+        { id: 't5p1', slot: 'st kilda · 21 jun', caption: 'last pier', imageUrl: null, top: 30, left: 44, width: 154, rot: -5, tape: 'dots', x: 0, y: 0 },
+        { id: 't5p2', slot: 'box hill bingsu', caption: 'one more bowl', imageUrl: null, top: 122, left: 150, width: 122, rot: 6, tape: 'yellow', x: 0, y: 0 },
+      ],
+      days: [
+        { id: 't5d1', day: '21', title: 'st kilda', note: 'the pier feels too quiet because everyone knows it is ending' },
+        { id: 't5d2', day: '28', title: 'last tram', note: 'letters on the fridge, bags by the door again' },
+      ],
+    },
   ],
   timelineStamps: {
     arrived: 'ARRIVED · 14 FEB',

@@ -173,14 +173,37 @@ function MobileDiary({ content, currentTrack, playing, onTogglePlayer, onPrevTra
 
       <MobileSection id="m-timeline" no="05" title="months together" kr="시간">
         <div className="mobile-timeline">
-          {months.map((month) => (
-            <article key={month.id} style={{ borderColor: month.accent || '#d44a35' }}>
-              <div>{month.en} · {month.kr}</div>
-              <h3>{month.big}</h3>
-              <p>{month.note}</p>
-              <small>{month.pol}</small>
-            </article>
-          ))}
+          {months.map((month) => {
+            const monthPhotos = Array.isArray(month.photos)
+              ? month.photos
+              : [{ id: `${month.id}-photo`, slot: month.pol, caption: month.pol, imageUrl: month.imageUrl, rot: -3 }];
+            const monthDays = Array.isArray(month.days) ? month.days : [];
+
+            return (
+              <article key={month.id} style={{ borderColor: month.accent || '#d44a35' }}>
+                <div>{month.en} · {month.kr}</div>
+                <h3>{month.big}</h3>
+                <p>{month.note}</p>
+                {!!monthPhotos.length && (
+                  <div className="mobile-month-photos">
+                    {monthPhotos.slice(0, 2).map((photo, i) => (
+                      <MobilePhotoCard key={photo.id || i} photo={{ ...photo, caption: photo.caption || photo.slot }} />
+                    ))}
+                  </div>
+                )}
+                {!!monthDays.length && (
+                  <div className="mobile-day-strip">
+                    {monthDays.slice(0, 4).map((day) => (
+                      <span key={day.id} style={{ borderColor: month.accent || '#d44a35' }}>
+                        {day.day} · {day.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <small>{month.pol}</small>
+              </article>
+            );
+          })}
         </div>
       </MobileSection>
 

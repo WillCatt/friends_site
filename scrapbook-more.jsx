@@ -372,6 +372,117 @@ function ScrapbookMap() {
 window.DraggablePhotos = DraggablePhotos;
 window.ScrapbookMap = ScrapbookMap;
 
+function inferTimelineDay(month, idx) {
+  const match = String(month?.pol || month?.note || '').match(/\b([0-3]?\d)\b/);
+  return match ? match[1].padStart(2, '0') : String(Math.min(28, 5 + idx * 4)).padStart(2, '0');
+}
+
+function createTimelinePhoto(month, idx, count = 0) {
+  const idBase = month?.id || `month-${idx}`;
+  const presets = [
+    { top: 28, left: 38, width: 158, rot: -5, tape: month?.tape || 'red' },
+    { top: 122, left: 150, width: 122, rot: 6, tape: 'yellow' },
+    { top: 78, left: 164, width: 138, rot: -2, tape: 'blue' },
+  ];
+  const preset = presets[count % presets.length];
+  return {
+    id: `${idBase}-photo-${Date.now()}-${count}`,
+    slot: count === 0 ? (month?.pol || 'photo slot') : 'new memory',
+    caption: count === 0 ? (month?.pol || month?.big || 'memory') : 'caption',
+    imageUrl: count === 0 ? (month?.imageUrl || null) : null,
+    x: 0,
+    y: 0,
+    ...preset,
+  };
+}
+
+function getTimelinePhotos(month, idx) {
+  if (Array.isArray(month?.photos)) return month.photos;
+  return [
+    {
+      ...createTimelinePhoto(month, idx, 0),
+      id: `${month?.id || `month-${idx}`}-legacy-photo`,
+    },
+    {
+      ...createTimelinePhoto(month, idx, 1),
+      id: `${month?.id || `month-${idx}`}-extra-photo`,
+      slot: 'add another photo',
+      caption: 'little moment',
+      imageUrl: null,
+    },
+  ];
+}
+
+function createTimelineDay(month, idx, count = 0) {
+  const base = Number(inferTimelineDay(month, idx)) || 1;
+  const day = String(Math.min(28, base + count * 5)).padStart(2, '0');
+  return {
+    id: `${month?.id || `month-${idx}`}-day-${Date.now()}-${count}`,
+    day,
+    title: count === 0 ? (month?.big || month?.en || 'memory') : 'small detail',
+    note: count === 0 ? (month?.note || 'what happened here') : 'add another memory from this month',
+  };
+}
+
+function getTimelineDays(month, idx) {
+  if (Array.isArray(month?.days)) return month.days;
+  return [
+    {
+      ...createTimelineDay(month, idx, 0),
+      id: `${month?.id || `month-${idx}`}-legacy-day`,
+    },
+    {
+      ...createTimelineDay(month, idx, 1),
+      id: `${month?.id || `month-${idx}`}-extra-day`,
+    },
+  ];
+}
+
+function TimelineMonthPolaroid({ photo, onCommit, onPatch, onDelete, zIndex = 1 }) {
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
+  const { pos, dragHandlers } = useDraggable({ x: photo.x || 0, y: photo.y || 0 }, onCommit);
+  const dragProps = editing ? dragHandlers : {};
+
+  return (
+    <div
+      className={`timeline-month-polaroid${editing ? ' draggable' : ''}`}
+      {...dragProps}
+      style={{
+        top: photo.top ?? 32,
+        left: photo.left ?? 32,
+        width: photo.width || 150,
+        zIndex,
+        transform: `translate(${pos.x}px, ${pos.y}px) rotate(${photo.rot || 0}deg)`,
+        '--hover-rot': `${photo.rot || 0}deg`,
+      }}
+    >
+      <div className={`washi ${photo.tape === 'red' ? '' : photo.tape}`}
+        style={{ top: -8, left: '50%', width: 58, marginLeft: -29, height: 13, opacity: .78 }} />
+      {window.SBRotateControls && (
+        <window.SBRotateControls value={photo.rot || 0} onChange={(rot) => onPatch?.({ rot })} />
+      )}
+      <SBEditableImage
+        src={photo.imageUrl}
+        slot={photo.slot}
+        onChange={(url) => onPatch?.({ imageUrl: url })}
+        className="photo-slot-wrap"
+        style={{ aspectRatio: '1/1', position: 'relative' }}
+      />
+      <SBEditableText
+        tag="div"
+        className="timeline-month-polaroid-caption sb-mono"
+        value={photo.caption || photo.slot}
+        onChange={(v) => onPatch?.({ caption: v })}
+        placeholder="caption"
+      />
+      {editing && window.DeleteButton && (
+        <window.DeleteButton onClick={onDelete}
+          style={{ position: 'absolute', top: -12, right: -12, zIndex: 40 }} />
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 05 · TIMELINE — Feb → Jun
 // ═══════════════════════════════════════════════════════════════
@@ -380,7 +491,9 @@ function ScrapbookTimeline() {
   const months = store?.content?.timelineMonths || window.DIARY_DEFAULTS?.timelineMonths || [];
   const stamps = store?.content?.timelineStamps || window.DIARY_DEFAULTS?.timelineStamps || {};
   const note = store?.content?.timelineNote || window.DIARY_DEFAULTS?.timelineNote || '';
+  const editing = !!(window.useEditMode?.().editMode && window.useAuth?.().user);
   const [active, setActive] = React.useState(0);
+  const [activeDayByMonth, setActiveDayByMonth] = React.useState({});
   const scrollerRef = React.useRef(null);
   const patch = (id, p) => store?.updateItem?.('timelineMonths', id, p);
   const add = () => store?.addItem?.('timelineMonths', {
@@ -394,8 +507,51 @@ function ScrapbookTimeline() {
     accent: '#d44a35',
     tape: 'red',
     imageUrl: null,
+    photos: [
+      { id: 'tp' + Date.now(), slot: 'new photo', caption: 'new memory', imageUrl: null, top: 34, left: 44, width: 150, rot: -4, tape: 'red', x: 0, y: 0 },
+      { id: 'tp' + Date.now() + '-b', slot: 'another photo', caption: 'little moment', imageUrl: null, top: 122, left: 150, width: 122, rot: 5, tape: 'yellow', x: 0, y: 0 },
+    ],
+    days: [
+      { id: 'td' + Date.now(), day: '01', title: 'first memory', note: 'add what happened this day' },
+    ],
   });
   const activeMonth = months[Math.min(active, Math.max(months.length - 1, 0))] || {};
+
+  const patchPhoto = (month, idx, photoId, photoPatch) => {
+    const photos = getTimelinePhotos(month, idx).map((photo) =>
+      photo.id === photoId ? { ...photo, ...photoPatch } : photo
+    );
+    patch(month.id, { photos });
+  };
+
+  const addPhoto = (month, idx) => {
+    const photos = getTimelinePhotos(month, idx);
+    patch(month.id, { photos: [...photos, createTimelinePhoto(month, idx, photos.length)] });
+  };
+
+  const removePhoto = (month, idx, photoId) => {
+    patch(month.id, { photos: getTimelinePhotos(month, idx).filter((photo) => photo.id !== photoId) });
+  };
+
+  const patchDay = (month, idx, dayId, dayPatch) => {
+    const days = getTimelineDays(month, idx).map((day) =>
+      day.id === dayId ? { ...day, ...dayPatch } : day
+    );
+    patch(month.id, { days });
+  };
+
+  const addDay = (month, idx) => {
+    const days = getTimelineDays(month, idx);
+    const day = createTimelineDay(month, idx, days.length);
+    patch(month.id, { days: [...days, day] });
+    setActiveDayByMonth(prev => ({ ...prev, [month.id]: day.id }));
+  };
+
+  const removeDay = (month, idx, dayId) => {
+    const days = getTimelineDays(month, idx).filter((day) => day.id !== dayId);
+    patch(month.id, { days });
+    setActiveDayByMonth(prev => ({ ...prev, [month.id]: days[0]?.id }));
+  };
 
   React.useEffect(() => {
     if (active > months.length - 1) setActive(Math.max(months.length - 1, 0));
@@ -465,75 +621,164 @@ function ScrapbookTimeline() {
         </div>
 
         <div className="timeline-book-scroll" ref={scrollerRef} onScroll={syncActiveMonth}>
-          {months.map((m, i) => (
-            <article
-              key={m.id || m.en || i}
-              data-month-idx={i}
-              className={`timeline-page-shell${i === active ? ' is-active' : i < active ? ' before' : ' after'}`}
-            >
-              <div className="timeline-month-page" style={{ '--month-bg': m.bg || '#fdf3df', '--month-accent': m.accent || '#d44a35' }}>
-                <div className={`washi ${m.tape === 'red' ? '' : m.tape}`}
-                  style={{
-                    position: 'absolute',
-                    top: 18,
-                    left: 58,
-                    width: 126,
-                    height: 18,
-                    transform: `rotate(${[-3, 4, -2, 5, -3][i % 5]}deg)`,
-                  }} />
-                <div className="timeline-page-number">
-                  {String(i + 1).padStart(2, '0')} / {String(months.length).padStart(2, '0')}
-                </div>
+          {months.map((m, i) => {
+            const photos = getTimelinePhotos(m, i);
+            const days = getTimelineDays(m, i);
+            const requestedDay = activeDayByMonth[m.id];
+            const activeDayId = days.some((day) => day.id === requestedDay) ? requestedDay : days[0]?.id;
+            const selectedDay = days.find((day) => day.id === activeDayId) || days[0];
 
-                <div className="timeline-page-grid">
-                  <div className="timeline-page-copy">
-                    <div className="timeline-page-kicker">
-                      <SBEditableText tag="span" value={m.en} onChange={(v) => patch(m.id, { en: v })} /> · 2026
+            return (
+              <article
+                key={m.id || m.en || i}
+                data-month-idx={i}
+                className={`timeline-page-shell${i === active ? ' is-active' : i < active ? ' before' : ' after'}`}
+              >
+                <div className="timeline-month-page" style={{ '--month-bg': m.bg || '#fdf3df', '--month-accent': m.accent || '#d44a35' }}>
+                  <div className={`washi ${m.tape === 'red' ? '' : m.tape}`}
+                    style={{
+                      position: 'absolute',
+                      top: 18,
+                      left: 58,
+                      width: 126,
+                      height: 18,
+                      transform: `rotate(${[-3, 4, -2, 5, -3][i % 5]}deg)`,
+                    }} />
+                  <div className="timeline-page-number">
+                    {String(i + 1).padStart(2, '0')} / {String(months.length).padStart(2, '0')}
+                  </div>
+
+                  <div className="timeline-page-grid">
+                    <div className="timeline-page-copy">
+                      <div className="timeline-page-kicker">
+                        <SBEditableText tag="span" value={m.en} onChange={(v) => patch(m.id, { en: v })} /> · 2026
+                      </div>
+                      <SBEditableText
+                        tag="div"
+                        className="sb-hand-kr"
+                        value={m.kr}
+                        onChange={(v) => patch(m.id, { kr: v })}
+                        placeholder="한글"
+                        style={{ fontSize: 50, color: 'var(--month-accent)', lineHeight: .88, marginTop: 12 }}
+                      />
+                      <SBEditableText
+                        tag="div"
+                        className="sb-hand"
+                        value={m.big}
+                        onChange={(v) => patch(m.id, { big: v })}
+                        style={{ fontSize: 64, color: '#1c1612', lineHeight: .82, marginTop: 8 }}
+                      />
+                      <SBEditableText
+                        tag="div"
+                        className="sb-hand"
+                        value={m.note}
+                        onChange={(v) => patch(m.id, { note: v })}
+                        multiline
+                        style={{ fontSize: 22, color: '#3a2e1c', marginTop: 18, lineHeight: 1.04, whiteSpace: 'pre-line' }}
+                      />
                     </div>
-                    <SBEditableText
-                      tag="div"
-                      className="sb-hand-kr"
-                      value={m.kr}
-                      onChange={(v) => patch(m.id, { kr: v })}
-                      placeholder="한글"
-                      style={{ fontSize: 58, color: 'var(--month-accent)', lineHeight: .88, marginTop: 18 }}
-                    />
-                    <SBEditableText
-                      tag="div"
-                      className="sb-hand"
-                      value={m.big}
-                      onChange={(v) => patch(m.id, { big: v })}
-                      style={{ fontSize: 76, color: '#1c1612', lineHeight: .82, marginTop: 8 }}
-                    />
-                    <SBEditableText
-                      tag="div"
-                      className="sb-hand"
-                      value={m.note}
-                      onChange={(v) => patch(m.id, { note: v })}
-                      multiline
-                      style={{ fontSize: 28, color: '#3a2e1c', marginTop: 22, lineHeight: 1.05, whiteSpace: 'pre-line' }}
-                    />
-                  </div>
 
-                  <div className="timeline-page-photo">
-                    <SBEditableImage
-                      src={m.imageUrl}
-                      slot={m.pol}
-                      onChange={(url) => patch(m.id, { imageUrl: url })}
-                      style={{ aspectRatio: '1/1' }}
-                    />
-                    <SBEditableText
-                      tag="div"
-                      className="sb-mono"
-                      value={m.pol}
-                      onChange={(v) => patch(m.id, { pol: v })}
-                      style={{ fontSize: 10, color: '#7a6648', marginTop: 10, letterSpacing: '.14em', textAlign: 'center' }}
-                    />
+                    <div className="timeline-collage-stage">
+                      <div className="timeline-collage-label">MONTH COLLAGE</div>
+                      {window.AddButton && (
+                        <div className="timeline-collage-actions">
+                          <window.AddButton onClick={() => addPhoto(m, i)} label="+ POLAROID" />
+                        </div>
+                      )}
+                      {photos.length === 0 && (
+                        <div className="timeline-collage-empty">add a polaroid</div>
+                      )}
+                      {photos.map((photo, pIdx) => (
+                        <TimelineMonthPolaroid
+                          key={photo.id || pIdx}
+                          photo={photo}
+                          zIndex={10 + pIdx}
+                          onCommit={(pos) => patchPhoto(m, i, photo.id, { x: Math.round(pos.x), y: Math.round(pos.y) })}
+                          onPatch={(photoPatch) => patchPhoto(m, i, photo.id, photoPatch)}
+                          onDelete={() => removePhoto(m, i, photo.id)}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="timeline-day-panel">
+                      <div>
+                        <div className="timeline-day-picker">
+                          {days.map((day) => (
+                            <button
+                              key={day.id}
+                              type="button"
+                              className={`timeline-day-chip${day.id === activeDayId ? ' active' : ''}`}
+                              onClick={() => setActiveDayByMonth(prev => ({ ...prev, [m.id]: day.id }))}
+                            >
+                              {day.day}
+                            </button>
+                          ))}
+                          {window.AddButton && <window.AddButton onClick={() => addDay(m, i)} label="+ DAY" />}
+                        </div>
+
+                        {editing && (
+                          <div className="timeline-month-style">
+                            <label>
+                              <span>paper</span>
+                              <input type="color" value={m.bg || '#fdf3df'} onChange={(e) => patch(m.id, { bg: e.target.value })} />
+                            </label>
+                            <label>
+                              <span>accent</span>
+                              <input type="color" value={m.accent || '#d44a35'} onChange={(e) => patch(m.id, { accent: e.target.value })} />
+                            </label>
+                            <label>
+                              <span>tape</span>
+                              <select value={m.tape || 'red'} onChange={(e) => patch(m.id, { tape: e.target.value })}>
+                                <option value="red">red</option>
+                                <option value="blue">blue</option>
+                                <option value="yellow">yellow</option>
+                                <option value="dots">dots</option>
+                              </select>
+                            </label>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="timeline-day-detail">
+                        {selectedDay ? (
+                          <React.Fragment>
+                            <div className="timeline-day-number">
+                              DAY <SBEditableText tag="span" value={selectedDay.day} onChange={(v) => patchDay(m, i, selectedDay.id, { day: v })} />
+                            </div>
+                            <SBEditableText
+                              tag="div"
+                              className="sb-hand"
+                              value={selectedDay.title}
+                              onChange={(v) => patchDay(m, i, selectedDay.id, { title: v })}
+                              placeholder="day title"
+                              style={{ fontSize: 26, lineHeight: .94, color: 'var(--month-accent)' }}
+                            />
+                            <SBEditableText
+                              tag="div"
+                              className="sb-hand"
+                              value={selectedDay.note}
+                              onChange={(v) => patchDay(m, i, selectedDay.id, { note: v })}
+                              placeholder="day note"
+                              multiline
+                              style={{ fontSize: 18, lineHeight: 1.05, color: '#3a2e1c', marginTop: 4, whiteSpace: 'pre-line' }}
+                            />
+                            {editing && days.length > 1 && window.DeleteButton && (
+                              <window.DeleteButton
+                                onClick={() => removeDay(m, i, selectedDay.id)}
+                                style={{ position: 'absolute', top: 8, right: 8 }}
+                              />
+                            )}
+                          </React.Fragment>
+                        ) : (
+                          <div className="timeline-collage-empty">add a day</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </div>
 
